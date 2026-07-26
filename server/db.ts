@@ -7,6 +7,7 @@ import {
   materials,
   inventoryUnits,
   workOrders,
+  unitPlanAssignments,
 } from "../drizzle/schema";
 import type {
   EquipmentType,
@@ -21,6 +22,7 @@ import type {
   InsertInventoryUnit,
   WorkOrder,
   InsertWorkOrder,
+  UnitPlanAssignment,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -38,11 +40,40 @@ export function getDb() {
 
 type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
 
-// Preservation activation/closure (PRD section 5): entering stock opens a Work Order
-// per active plan for the unit's equipment type; leaving stock closes any open ones.
+// Preservation activation/closure (PRD section 5, superseded by TP#8): entering stock opens
+// a Work Order per active unit-plan assignment; leaving stock closes any open ones.
+//
+// Assignments (unit_plan_assignments) are the source of truth for which plans apply to a
+// unit, decoupling that from a direct equipment-type match so manual exceptions are possible
+// (see createManualAssignment/deactivateAssignment below). The state machine below only looks
+// at the unit's *target* status plus the current assignment rows in the DB — it never needs
+// to know the previous status:
+//   -> available: if active assignments already exist (unit was 'reserved'), reuse them and
+//      open a new Work Order per assignment. Otherwise (brand-new unit, or unit was
+//      'consumed' — which deactivates all assignments for good) start a fresh cycle: create
+//      one 'auto' assignment per active plan for the unit's equipment type, then a Work Order
+//      per assignment.
+//   -> reserved: reversible, so assignments stay active — only close open Work Orders.
+//   -> consumed: definitive, so deactivate every active assignment for the unit (a later
+//      return to 'available' always starts a brand-new cycle, never reactivates these rows)
+//      and close open Work Orders.
 
-async function activateEnteringInventoryUnits(tx: Tx, equipmentTypeId: number, unitIds: number[]) {
-  if (unitIds.length === 0) return;
+async function handleUnitBecameAvailable(tx: Tx, unitId: number, equipmentTypeId: number) {
+  const activeAssignments = await tx
+    .select()
+    .from(unitPlanAssignments)
+    .where(and(eq(unitPlanAssignments.inventoryUnitId, unitId), eq(unitPlanAssignments.active, true)));
+
+  if (activeAssignments.length > 0) {
+    await tx.insert(workOrders).values(
+      activeAssignments.map(assignment => ({
+        planId: assignment.planId,
+        inventoryUnitId: unitId,
+        status: "open" as const,
+      }))
+    );
+    return;
+  }
 
   const activePlans = await tx
     .select()
@@ -51,20 +82,49 @@ async function activateEnteringInventoryUnits(tx: Tx, equipmentTypeId: number, u
 
   if (activePlans.length === 0) return;
 
+  await tx.insert(unitPlanAssignments).values(
+    activePlans.map(plan => ({
+      inventoryUnitId: unitId,
+      planId: plan.id,
+      source: "auto" as const,
+      active: true,
+    }))
+  );
+
   await tx.insert(workOrders).values(
-    unitIds.flatMap(inventoryUnitId =>
-      activePlans.map(plan => ({ planId: plan.id, inventoryUnitId, status: "open" as const }))
-    )
+    activePlans.map(plan => ({ planId: plan.id, inventoryUnitId: unitId, status: "open" as const }))
   );
 }
 
-async function closeOpenWorkOrdersForUnit(tx: Tx, inventoryUnitId: number) {
+// Bulk variant used when creating/growing a Material: every unit is brand new, so each one
+// always takes the "fresh cycle" branch above — looping keeps a single source of truth for
+// that logic instead of duplicating it as a batch insert.
+async function activateEnteringInventoryUnits(tx: Tx, equipmentTypeId: number, unitIds: number[]) {
+  for (const unitId of unitIds) {
+    await handleUnitBecameAvailable(tx, unitId, equipmentTypeId);
+  }
+}
+
+async function handleUnitBecameReserved(tx: Tx, unitId: number) {
+  await closeOpenWorkOrdersForUnit(tx, unitId, "closed automatically - unit reserved");
+}
+
+async function handleUnitBecameConsumed(tx: Tx, unitId: number) {
+  await tx
+    .update(unitPlanAssignments)
+    .set({ active: false, changedAt: new Date() })
+    .where(and(eq(unitPlanAssignments.inventoryUnitId, unitId), eq(unitPlanAssignments.active, true)));
+
+  await closeOpenWorkOrdersForUnit(tx, unitId, "closed automatically - unit consumed");
+}
+
+async function closeOpenWorkOrdersForUnit(tx: Tx, inventoryUnitId: number, note: string) {
   await tx
     .update(workOrders)
     .set({
       status: "completed",
       closedAt: new Date(),
-      checklistResult: { note: "Automatically closed because the inventory unit left stock." },
+      checklistResult: { note },
     })
     .where(
       and(eq(workOrders.inventoryUnitId, inventoryUnitId), inArray(workOrders.status, ["open", "in_progress"]))
@@ -352,10 +412,12 @@ export async function updateInventoryUnit(
         const materialRows = await tx.select().from(materials).where(eq(materials.id, materialId)).limit(1);
         const material = materialRows[0];
         if (material) {
-          await activateEnteringInventoryUnits(tx, material.equipmentTypeId, [id]);
+          await handleUnitBecameAvailable(tx, id, material.equipmentTypeId);
         }
-      } else if (data.status === "reserved" || data.status === "consumed") {
-        await closeOpenWorkOrdersForUnit(tx, id);
+      } else if (data.status === "reserved") {
+        await handleUnitBecameReserved(tx, id);
+      } else if (data.status === "consumed") {
+        await handleUnitBecameConsumed(tx, id);
       }
     }
 
@@ -404,4 +466,87 @@ export async function updateWorkOrder(id: number, data: Partial<InsertWorkOrder>
 
 export async function deleteWorkOrder(id: number): Promise<void> {
   await getDb().delete(workOrders).where(eq(workOrders.id, id));
+}
+
+// Unit-Plan Assignments
+
+export async function getUnitPlanAssignments(): Promise<UnitPlanAssignment[]> {
+  return getDb().select().from(unitPlanAssignments).orderBy(unitPlanAssignments.id);
+}
+
+export async function hasOpenWorkOrderForAssignment(inventoryUnitId: number, planId: number): Promise<boolean> {
+  const rows = await getDb()
+    .select({ id: workOrders.id })
+    .from(workOrders)
+    .where(
+      and(
+        eq(workOrders.inventoryUnitId, inventoryUnitId),
+        eq(workOrders.planId, planId),
+        inArray(workOrders.status, ["open", "in_progress"])
+      )
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+// Manually links a unit to a plan outside of the automatic equipment-type match. If the unit
+// is currently in stock, a Work Order is opened right away too, mirroring the automatic entry
+// behavior — otherwise the unit would show as overdue the instant the assignment is created.
+export async function createManualAssignment(inventoryUnitId: number, planId: number): Promise<UnitPlanAssignment> {
+  return getDb().transaction(async tx => {
+    const result = await tx
+      .insert(unitPlanAssignments)
+      .values({ inventoryUnitId, planId, source: "manual", active: true })
+      .$returningId();
+    const id = result[0].id;
+
+    const unitRows = await tx.select().from(inventoryUnits).where(eq(inventoryUnits.id, inventoryUnitId)).limit(1);
+    if (unitRows[0]?.status === "available") {
+      await tx.insert(workOrders).values({ planId, inventoryUnitId, status: "open" });
+    }
+
+    const createdRows = await tx.select().from(unitPlanAssignments).where(eq(unitPlanAssignments.id, id)).limit(1);
+    const created = createdRows[0];
+    if (!created) throw new Error("Failed to create assignment");
+    return created;
+  });
+}
+
+// Manually removes (deactivates) an assignment. `cancelOpenWorkOrder` reflects the user's
+// choice in the confirmation modal: true closes any open/in_progress Work Order for this
+// (unit, plan) pair as "cancelled"; false leaves it untouched (still visible in History, just
+// no longer tied to an active assignment).
+export async function deactivateAssignment(id: number, cancelOpenWorkOrder: boolean): Promise<UnitPlanAssignment> {
+  return getDb().transaction(async tx => {
+    const rows = await tx.select().from(unitPlanAssignments).where(eq(unitPlanAssignments.id, id)).limit(1);
+    const assignment = rows[0];
+    if (!assignment) throw new Error("Assignment not found");
+
+    await tx
+      .update(unitPlanAssignments)
+      .set({ active: false, changedAt: new Date() })
+      .where(eq(unitPlanAssignments.id, id));
+
+    if (cancelOpenWorkOrder) {
+      await tx
+        .update(workOrders)
+        .set({
+          status: "completed",
+          closedAt: new Date(),
+          checklistResult: { note: "cancelled - assignment removed manually" },
+        })
+        .where(
+          and(
+            eq(workOrders.inventoryUnitId, assignment.inventoryUnitId),
+            eq(workOrders.planId, assignment.planId),
+            inArray(workOrders.status, ["open", "in_progress"])
+          )
+        );
+    }
+
+    const updatedRows = await tx.select().from(unitPlanAssignments).where(eq(unitPlanAssignments.id, id)).limit(1);
+    const updated = updatedRows[0];
+    if (!updated) throw new Error("Assignment not found");
+    return updated;
+  });
 }

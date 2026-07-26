@@ -99,3 +99,34 @@ export const workOrders = mysqlTable("work_orders", {
 
 export type WorkOrder = typeof workOrders.$inferSelect;
 export type InsertWorkOrder = typeof workOrders.$inferInsert;
+
+export const unitPlanAssignments = mysqlTable(
+  "unit_plan_assignments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    inventoryUnitId: int("inventory_unit_id").notNull(),
+    planId: int("plan_id").notNull(),
+    source: mysqlEnum("source", ["auto", "manual"]).notNull(),
+    active: boolean("active").notNull().default(true),
+    changedBy: varchar("changed_by", { length: 255 }),
+    changedAt: timestamp("changed_at").notNull().defaultNow(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  table => [
+    // Explicit short names: the auto-generated FK names would exceed MySQL/TiDB's
+    // 64-char identifier limit once there are two FKs on this table.
+    foreignKey({
+      columns: [table.inventoryUnitId],
+      foreignColumns: [inventoryUnits.id],
+      name: "upa_unit_fk",
+    }),
+    foreignKey({
+      columns: [table.planId],
+      foreignColumns: [maintenancePlans.id],
+      name: "upa_plan_fk",
+    }),
+  ],
+);
+
+export type UnitPlanAssignment = typeof unitPlanAssignments.$inferSelect;
+export type InsertUnitPlanAssignment = typeof unitPlanAssignments.$inferInsert;

@@ -15,6 +15,13 @@
       "when": 1785033523227,
       "tag": "0001_gifted_mephistopheles",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1785068669327,
+      "tag": "0002_spooky_maverick",
+      "breakpoints": true
     }
   ]
 }

@@ -25,6 +25,10 @@ import {
   createWorkOrder,
   updateWorkOrder,
   deleteWorkOrder,
+  getUnitPlanAssignments,
+  createManualAssignment,
+  deactivateAssignment,
+  hasOpenWorkOrderForAssignment,
 } from "./db";
 
 // Note: booleans intentionally have no zod .default() — with .partial() applied for
@@ -77,6 +81,21 @@ const workOrderInput = z.object({
   planId: z.number().int().positive("Maintenance plan is required"),
   inventoryUnitId: z.number().int().positive("Inventory unit is required"),
   status: z.enum(["open", "in_progress", "completed"]),
+});
+
+const createAssignmentInput = z.object({
+  inventoryUnitId: z.number().int().positive("Inventory unit is required"),
+  planId: z.number().int().positive("Maintenance plan is required"),
+});
+
+const deactivateAssignmentInput = z.object({
+  id: z.number().int().positive(),
+  cancelOpenWorkOrder: z.boolean(),
+});
+
+const assignmentLookupInput = z.object({
+  inventoryUnitId: z.number().int().positive(),
+  planId: z.number().int().positive(),
 });
 
 export const appRouter = router({
@@ -182,6 +201,22 @@ export const appRouter = router({
     delete: publicProcedure
       .input(z.object({ id: z.number().int().positive() }))
       .mutation(({ input }) => deleteWorkOrder(input.id)),
+  }),
+
+  unitPlanAssignments: router({
+    list: publicProcedure.query(() => getUnitPlanAssignments()),
+
+    create: publicProcedure
+      .input(createAssignmentInput)
+      .mutation(({ input }) => createManualAssignment(input.inventoryUnitId, input.planId)),
+
+    deactivate: publicProcedure
+      .input(deactivateAssignmentInput)
+      .mutation(({ input }) => deactivateAssignment(input.id, input.cancelOpenWorkOrder)),
+
+    hasOpenWorkOrder: publicProcedure
+      .input(assignmentLookupInput)
+      .query(({ input }) => hasOpenWorkOrderForAssignment(input.inventoryUnitId, input.planId)),
   }),
 });
 

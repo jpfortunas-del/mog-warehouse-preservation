@@ -2,11 +2,10 @@ import { Redirect, Route, Switch } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
 import EquipmentTypes from "@/pages/EquipmentTypes";
 import PreservationProcedures from "@/pages/PreservationProcedures";
-import MaintenancePlans from "@/pages/MaintenancePlans";
+import Plans from "@/pages/Plans";
 import Materials from "@/pages/Materials";
 import InventoryUnits from "@/pages/InventoryUnits";
 import WorkOrders from "@/pages/WorkOrders";
-import PlansOverview from "@/pages/PlansOverview";
 
 function App() {
   return (
@@ -14,11 +13,10 @@ function App() {
       <Switch>
         <Route path="/equipment-types" component={EquipmentTypes} />
         <Route path="/preservation-procedures" component={PreservationProcedures} />
-        <Route path="/maintenance-plans" component={MaintenancePlans} />
+        <Route path="/plans/:tab?" component={Plans} />
         <Route path="/materials" component={Materials} />
         <Route path="/inventory-units" component={InventoryUnits} />
-        <Route path="/work-orders" component={WorkOrders} />
-        <Route path="/plans-overview" component={PlansOverview} />
+        <Route path="/work-orders/:tab?" component={WorkOrders} />
         <Route path="/">
           <Redirect to="/equipment-types" />
         </Route>

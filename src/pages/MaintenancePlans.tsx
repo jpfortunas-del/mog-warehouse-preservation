@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -110,10 +109,6 @@ export default function MaintenancePlans() {
 
   return (
     <div>
-      <PageHeader
-        title="Maintenance Plans"
-        description="Maintenance plans that group procedures and frequency by equipment."
-      />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
           <Plus /> New Plan
