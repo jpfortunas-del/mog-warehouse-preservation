@@ -478,10 +478,11 @@ export async function createWorkOrder(data: InsertWorkOrder): Promise<WorkOrder>
 }
 
 export async function updateWorkOrder(id: number, data: Partial<InsertWorkOrder>): Promise<WorkOrder> {
-  // Manual completion (via the Work Orders CRUD) needs closedAt populated too, since
-  // Plans Overview classification relies on it — mirrors the automatic closure path.
+  // Manual completion/cancellation (via the Work Orders CRUD) needs closedAt populated too,
+  // since Plans Overview classification and History rely on it — mirrors the automatic
+  // closure path.
   const patch = { ...data };
-  if (patch.status === "completed" && patch.closedAt === undefined) {
+  if ((patch.status === "completed" || patch.status === "cancelled") && patch.closedAt === undefined) {
     patch.closedAt = new Date();
   }
 

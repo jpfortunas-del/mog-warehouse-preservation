@@ -122,9 +122,16 @@ export const workOrders = mysqlTable("work_orders", {
   inventoryUnitId: int("inventory_unit_id")
     .notNull()
     .references(() => inventoryUnits.id),
-  status: mysqlEnum("status", ["open", "in_progress", "completed"]).notNull().default("open"),
+  status: mysqlEnum("status", ["open", "in_progress", "completed", "cancelled"]).notNull().default("open"),
   checklistResult: json("checklist_result").$type<WorkOrderChecklistResult>(),
   dueDate: date("due_date", { mode: "string" }),
+  // Planned execution date, set by the technician/supervisor — independent from dueDate,
+  // which stays automatically derived from the Plan's interval (see TP#18).
+  scheduledDate: date("scheduled_date", { mode: "string" }),
+  // Freeform notes from the technician about the execution (TP#18).
+  comments: text("comments"),
+  // Required justification when a Work Order is manually cancelled (TP#18).
+  cancelReason: text("cancel_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   closedAt: timestamp("closed_at"),
 });

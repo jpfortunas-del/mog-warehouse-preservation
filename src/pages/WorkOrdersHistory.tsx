@@ -30,6 +30,16 @@ const RESULT_VARIANT: Record<"pass" | "fail" | "flag", "green" | "destructive" |
   flag: "amber",
 };
 
+const CLOSED_STATUS_LABEL: Record<"completed" | "cancelled", string> = {
+  completed: "Completed",
+  cancelled: "Cancelled",
+};
+
+const CLOSED_STATUS_VARIANT: Record<"completed" | "cancelled", "green" | "navy"> = {
+  completed: "green",
+  cancelled: "navy",
+};
+
 function formatIsoDate(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
@@ -72,7 +82,7 @@ export default function WorkOrdersHistory() {
   }
 
   const completed = workOrders
-    .filter(w => w.status === "completed")
+    .filter(w => w.status === "completed" || w.status === "cancelled")
     .filter(w => unitFilter === ALL || w.inventoryUnitId === Number(unitFilter))
     .filter(w => planFilter === ALL || w.planId === Number(planFilter))
     .filter(w => {
@@ -134,20 +144,22 @@ export default function WorkOrdersHistory() {
                 <TableHead>Inventory Unit</TableHead>
                 <TableHead>Due Date</TableHead>
                 <TableHead>Closed At</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Note</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {completed.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    No completed work orders match this filter.
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    No completed or cancelled work orders match this filter.
                   </TableCell>
                 </TableRow>
               )}
               {completed.map(item => {
                 const result = (item.checklistResult ?? null) as WorkOrderChecklistResult | null;
                 const steps = result?.steps ?? [];
+                const isCancelled = item.status === "cancelled";
                 return (
                   <TableRow
                     key={item.id}
@@ -160,8 +172,15 @@ export default function WorkOrdersHistory() {
                     <TableCell>
                       {item.closedAt ? new Date(item.closedAt).toLocaleString() : "—"}
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={CLOSED_STATUS_VARIANT[isCancelled ? "cancelled" : "completed"]}>
+                        {CLOSED_STATUS_LABEL[isCancelled ? "cancelled" : "completed"]}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {result?.note ? (
+                      {isCancelled ? (
+                        <span className="text-destructive">{item.cancelReason || "No reason provided"}</span>
+                      ) : result?.note ? (
                         result.note
                       ) : steps.length > 0 ? (
                         <span>{checklistSummary(steps)}</span>
@@ -180,12 +199,18 @@ export default function WorkOrdersHistory() {
       <Dialog open={detailsItem !== null} onOpenChange={open => !open && setDetailsItem(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Checklist Results</DialogTitle>
+            <DialogTitle>{detailsItem?.status === "cancelled" ? "Cancelled Work Order" : "Checklist Results"}</DialogTitle>
           </DialogHeader>
           {detailsItem && (
             <p className="text-sm text-muted-foreground">
               {planLabel(detailsItem.planId)} — {inventoryUnitLabel(detailsItem.inventoryUnitId)}
             </p>
+          )}
+          {detailsItem?.status === "cancelled" && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-destructive">Cancellation Reason</p>
+              <p className="text-sm">{detailsItem.cancelReason || "No reason provided"}</p>
+            </div>
           )}
           <div className="flex flex-col gap-2">
             {((detailsItem?.checklistResult as WorkOrderChecklistResult | null)?.steps ?? []).map(step => (

@@ -102,8 +102,11 @@ const checklistResultInput = z.object({
 const workOrderInput = z.object({
   planId: z.number().int().positive("Maintenance plan is required"),
   inventoryUnitId: z.number().int().positive("Inventory unit is required"),
-  status: z.enum(["open", "in_progress", "completed"]),
+  status: z.enum(["open", "in_progress", "completed", "cancelled"]),
   checklistResult: checklistResultInput.nullish(),
+  scheduledDate: z.string().optional().nullable(),
+  comments: z.string().optional().nullable(),
+  cancelReason: z.string().optional().nullable(),
 });
 
 const createAssignmentInput = z.object({
