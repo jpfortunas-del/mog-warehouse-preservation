@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { MapPin, Plus, Trash2 } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,6 +104,7 @@ export default function InventoryUnits() {
   function handleDelete(item: InventoryUnit) {
     if (confirm(`Delete inventory unit "${item.serial}"?`)) {
       deleteMutation.mutate({ id: item.id });
+      setOpen(false);
     }
   }
 
@@ -130,20 +131,19 @@ export default function InventoryUnits() {
                 <TableHead>Serial</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && inventoryUnits.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     No inventory units registered.
                   </TableCell>
                 </TableRow>
@@ -151,7 +151,11 @@ export default function InventoryUnits() {
               {inventoryUnits.map(item => {
                 const material = findMaterial(item.materialId);
                 return (
-                <TableRow key={item.id}>
+                <TableRow
+                  key={item.id}
+                  onClick={() => openEdit(item)}
+                  className="cursor-pointer hover:bg-primary/5"
+                >
                   <TableCell className="font-medium">{material?.materialId ?? `#${item.materialId}`}</TableCell>
                   <TableCell>{material?.name ?? "—"}</TableCell>
                   <TableCell className="font-medium">{item.serial}</TableCell>
@@ -167,14 +171,6 @@ export default function InventoryUnits() {
                   </TableCell>
                   <TableCell>
                     <Badge variant={STATUS_VARIANT[item.status]}>{STATUS_LABEL[item.status]}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
-                      <Pencil />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
-                      <Trash2 />
-                    </Button>
                   </TableCell>
                 </TableRow>
                 );
@@ -243,14 +239,21 @@ export default function InventoryUnits() {
                 </SelectContent>
               </Select>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSaving || !form.materialId}>
-                {isSaving ? "Saving..." : "Save"}
-              </Button>
-            </DialogFooter>
+            <div className="flex items-center justify-between gap-2">
+              {editing && (
+                <Button type="button" variant="outline" onClick={() => handleDelete(editing)}>
+                  <Trash2 /> Delete
+                </Button>
+              )}
+              <DialogFooter className="flex-1 sm:flex-none">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSaving || !form.materialId}>
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

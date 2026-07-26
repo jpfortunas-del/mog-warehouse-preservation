@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -142,6 +142,7 @@ export default function PreservationProcedures() {
   function handleDelete(item: ProcedureRow) {
     if (confirm(`Delete procedure "${item.name}"?`)) {
       deleteMutation.mutate({ id: item.id });
+      setOpen(false);
     }
   }
 
@@ -167,26 +168,29 @@ export default function PreservationProcedures() {
                 <TableHead>Equipment Type</TableHead>
                 <TableHead>Checklist</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && procedures.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                     No procedures registered.
                   </TableCell>
                 </TableRow>
               )}
               {procedures.map(item => (
-                <TableRow key={item.id}>
+                <TableRow
+                  key={item.id}
+                  onClick={() => openEdit(item)}
+                  className="cursor-pointer hover:bg-primary/5"
+                >
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{equipmentTypeName(item.equipmentTypeId)}</TableCell>
                   <TableCell className="text-muted-foreground">
@@ -196,14 +200,6 @@ export default function PreservationProcedures() {
                     <Badge variant={item.active ? "cyan" : "destructive"}>
                       {item.active ? "Active" : "Inactive"}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
-                      <Pencil />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
-                      <Trash2 />
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -334,14 +330,21 @@ export default function PreservationProcedures() {
               />
               <Label htmlFor="active">Active</Label>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSaving || !form.equipmentTypeId}>
-                {isSaving ? "Saving..." : "Save"}
-              </Button>
-            </DialogFooter>
+            <div className="flex items-center justify-between gap-2">
+              {editing && (
+                <Button type="button" variant="outline" onClick={() => handleDelete(editing)}>
+                  <Trash2 /> Delete
+                </Button>
+              )}
+              <DialogFooter className="flex-1 sm:flex-none">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSaving || !form.equipmentTypeId}>
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

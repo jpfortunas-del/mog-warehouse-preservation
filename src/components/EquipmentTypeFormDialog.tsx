@@ -38,11 +38,13 @@ export function EquipmentTypeFormDialog({
   onOpenChange,
   editing,
   onSaved,
+  onDelete,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: EquipmentType | null;
   onSaved?: (equipmentType: EquipmentType) => void;
+  onDelete?: (equipmentType: EquipmentType) => void;
 }) {
   const utils = trpc.useUtils();
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -179,14 +181,21 @@ export function EquipmentTypeFormDialog({
             />
             <Label htmlFor="active">Active</Label>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
+          <div className="flex items-center justify-between gap-2">
+            {editing && onDelete && (
+              <Button type="button" variant="outline" onClick={() => onDelete(editing)}>
+                <Trash2 /> Delete
+              </Button>
+            )}
+            <DialogFooter className="flex-1 sm:flex-none">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </div>
         </form>
       </DialogContent>
     </Dialog>

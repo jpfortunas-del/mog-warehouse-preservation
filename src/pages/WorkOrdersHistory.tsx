@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
@@ -137,13 +135,12 @@ export default function WorkOrdersHistory() {
                 <TableHead>Due Date</TableHead>
                 <TableHead>Closed At</TableHead>
                 <TableHead>Note</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {completed.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     No completed work orders match this filter.
                   </TableCell>
                 </TableRow>
@@ -152,7 +149,11 @@ export default function WorkOrdersHistory() {
                 const result = (item.checklistResult ?? null) as WorkOrderChecklistResult | null;
                 const steps = result?.steps ?? [];
                 return (
-                  <TableRow key={item.id}>
+                  <TableRow
+                    key={item.id}
+                    onClick={() => setDetailsItem(item)}
+                    className="cursor-pointer hover:bg-primary/5"
+                  >
                     <TableCell className="font-medium">{planLabel(item.planId)}</TableCell>
                     <TableCell>{inventoryUnitLabel(item.inventoryUnitId)}</TableCell>
                     <TableCell>{item.dueDate ? formatIsoDate(item.dueDate) : "—"}</TableCell>
@@ -166,13 +167,6 @@ export default function WorkOrdersHistory() {
                         <span>{checklistSummary(steps)}</span>
                       ) : (
                         <Badge variant="secondary">Manual completion</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {steps.length > 0 && (
-                        <Button variant="ghost" size="icon" title="View details" onClick={() => setDetailsItem(item)}>
-                          <Eye />
-                        </Button>
                       )}
                     </TableCell>
                   </TableRow>

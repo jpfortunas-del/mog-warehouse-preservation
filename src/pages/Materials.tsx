@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { MapPin, Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { MapPin, Plus, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -118,6 +118,7 @@ export default function Materials() {
   function handleDelete(item: Material) {
     if (confirm(`Delete material "${item.name}"?`)) {
       deleteMutation.mutate({ id: item.id });
+      setOpen(false);
     }
   }
 
@@ -154,26 +155,29 @@ export default function Materials() {
                 <TableHead>Storage Bin</TableHead>
                 <TableHead>Preservable</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && materials.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     No materials registered.
                   </TableCell>
                 </TableRow>
               )}
               {materials.map(item => (
-                <TableRow key={item.id}>
+                <TableRow
+                  key={item.id}
+                  onClick={() => openEdit(item)}
+                  className="cursor-pointer hover:bg-primary/5"
+                >
                   <TableCell className="font-medium">{item.materialId}</TableCell>
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{equipmentTypeName(item.equipmentTypeId)}</TableCell>
@@ -197,14 +201,6 @@ export default function Materials() {
                     <Badge variant={item.active ? "cyan" : "destructive"}>
                       {item.active ? "Active" : "Inactive"}
                     </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
-                      <Pencil />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
-                      <Trash2 />
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -308,14 +304,21 @@ export default function Materials() {
               />
               <Label htmlFor="active">Active</Label>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSaving || !form.equipmentTypeId}>
-                {isSaving ? "Saving..." : "Save"}
-              </Button>
-            </DialogFooter>
+            <div className="flex items-center justify-between gap-2">
+              {editing && (
+                <Button type="button" variant="outline" onClick={() => handleDelete(editing)}>
+                  <Trash2 /> Delete
+                </Button>
+              )}
+              <DialogFooter className="flex-1 sm:flex-none">
+                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSaving || !form.equipmentTypeId}>
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>

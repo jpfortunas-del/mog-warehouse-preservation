@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +16,10 @@ export default function EquipmentTypes() {
   const [editing, setEditing] = useState<EquipmentType | null>(null);
 
   const deleteMutation = trpc.equipmentTypes.delete.useMutation({
-    onSuccess: () => utils.equipmentTypes.list.invalidate(),
+    onSuccess: () => {
+      utils.equipmentTypes.list.invalidate();
+      setOpen(false);
+    },
   });
 
   function openCreate() {
@@ -53,26 +56,29 @@ export default function EquipmentTypes() {
                 <TableHead>Keywords</TableHead>
                 <TableHead>Preservable</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && equipmentTypes.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     No equipment types registered.
                   </TableCell>
                 </TableRow>
               )}
               {equipmentTypes.map(item => (
-                <TableRow key={item.id}>
+                <TableRow
+                  key={item.id}
+                  onClick={() => openEdit(item)}
+                  className="cursor-pointer hover:bg-primary/5"
+                >
                   <TableCell className="font-medium">{item.code}</TableCell>
                   <TableCell>{item.name}</TableCell>
                   <TableCell className="text-muted-foreground">{item.description || "—"}</TableCell>
@@ -89,14 +95,6 @@ export default function EquipmentTypes() {
                       {item.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
-                      <Pencil />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
-                      <Trash2 />
-                    </Button>
-                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -104,7 +102,12 @@ export default function EquipmentTypes() {
         </CardContent>
       </Card>
 
-      <EquipmentTypeFormDialog open={open} onOpenChange={setOpen} editing={editing} />
+      <EquipmentTypeFormDialog
+        open={open}
+        onOpenChange={setOpen}
+        editing={editing}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }
