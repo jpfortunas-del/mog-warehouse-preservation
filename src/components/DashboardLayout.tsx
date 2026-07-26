@@ -11,7 +11,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { navItems } from "@/components/nav-items";
+import { isNavItemActive, navItems } from "@/components/nav-items";
 import BottomNav from "./BottomNav";
 import { PanelLeft } from "lucide-react";
 import { Link, useLocation } from "wouter";
@@ -29,7 +29,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const isMobile = useIsMobile();
-  const activeItem = navItems.find(item => location.startsWith(item.path));
+  const activeItem = navItems.find(item => isNavItemActive(location, item.path));
 
   return (
     <>
@@ -58,7 +58,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-2">
               {navItems.map(item => {
-                const isActive = location.startsWith(item.path);
+                const isActive = isNavItemActive(location, item.path);
                 return (
                   <SidebarMenuItem key={item.path}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.label} className="h-10 font-normal">

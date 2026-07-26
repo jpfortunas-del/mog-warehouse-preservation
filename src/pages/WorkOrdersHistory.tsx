@@ -1,16 +1,50 @@
 import { useState } from "react";
+import { Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import type { inferRouterOutputs } from "@trpc/server";
 import { trpc } from "@/lib/trpc";
-import type { WorkOrderChecklistResult } from "../../drizzle/schema";
+import type { AppRouter } from "../../server/routers";
+import type { ChecklistResultStep, WorkOrderChecklistResult } from "../../drizzle/schema";
+
+type WorkOrder = inferRouterOutputs<AppRouter>["workOrders"]["list"][number];
 
 const ALL = "all";
+
+const RESULT_LABEL: Record<"pass" | "fail" | "flag", string> = {
+  pass: "Pass",
+  fail: "Fail",
+  flag: "Flag",
+};
+
+const RESULT_VARIANT: Record<"pass" | "fail" | "flag", "default" | "destructive" | "cyan"> = {
+  pass: "default",
+  fail: "destructive",
+  flag: "cyan",
+};
 
 function formatIsoDate(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+function checklistSummary(steps: ChecklistResultStep[]) {
+  const passed = steps.filter(s => s.actualResult === "pass").length;
+  const failed = steps.filter(s => s.actualResult === "fail").length;
+  const flagged = steps.filter(s => s.actualResult === "flag").length;
+  const parts = [`${passed}/${steps.length} passed`];
+  if (flagged > 0) parts.push(`${flagged} flagged`);
+  if (failed > 0) parts.push(`${failed} failed`);
+  return parts.join(", ");
 }
 
 export default function WorkOrdersHistory() {
@@ -23,6 +57,7 @@ export default function WorkOrdersHistory() {
   const [unitFilter, setUnitFilter] = useState(ALL);
   const [materialFilter, setMaterialFilter] = useState(ALL);
   const [planFilter, setPlanFilter] = useState(ALL);
+  const [detailsItem, setDetailsItem] = useState<WorkOrder | null>(null);
 
   function planLabel(id: number) {
     const plan = maintenancePlans.find(p => p.id === id);
@@ -102,12 +137,13 @@ export default function WorkOrdersHistory() {
                 <TableHead>Due Date</TableHead>
                 <TableHead>Closed At</TableHead>
                 <TableHead>Note</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {completed.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     No completed work orders match this filter.
                   </TableCell>
                 </TableRow>
@@ -127,11 +163,16 @@ export default function WorkOrdersHistory() {
                       {result?.note ? (
                         result.note
                       ) : steps.length > 0 ? (
-                        <span>
-                          {steps.filter(s => s.actualResult === "pass").length}/{steps.length} steps passed
-                        </span>
+                        <span>{checklistSummary(steps)}</span>
                       ) : (
                         <Badge variant="secondary">Manual completion</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {steps.length > 0 && (
+                        <Button variant="ghost" size="icon" title="View details" onClick={() => setDetailsItem(item)}>
+                          <Eye />
+                        </Button>
                       )}
                     </TableCell>
                   </TableRow>
@@ -141,6 +182,39 @@ export default function WorkOrdersHistory() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={detailsItem !== null} onOpenChange={open => !open && setDetailsItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Checklist Results</DialogTitle>
+          </DialogHeader>
+          {detailsItem && (
+            <p className="text-sm text-muted-foreground">
+              {planLabel(detailsItem.planId)} — {inventoryUnitLabel(detailsItem.inventoryUnitId)}
+            </p>
+          )}
+          <div className="flex flex-col gap-2">
+            {((detailsItem?.checklistResult as WorkOrderChecklistResult | null)?.steps ?? []).map(step => (
+              <div key={step.stepNumber} className="flex items-start gap-2 rounded-md border p-2">
+                <span className="mt-0.5 w-6 shrink-0 text-center text-sm text-muted-foreground">
+                  {step.stepNumber}
+                </span>
+                <div className="flex flex-1 flex-col gap-1">
+                  <p className="text-sm">{step.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Expected: {RESULT_LABEL[step.expectedResult]}
+                    {step.expectedValue ? ` (${step.expectedValue})` : ""}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={RESULT_VARIANT[step.actualResult]}>Actual: {RESULT_LABEL[step.actualResult]}</Badge>
+                    {step.actualValue && <span className="text-xs text-muted-foreground">{step.actualValue}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

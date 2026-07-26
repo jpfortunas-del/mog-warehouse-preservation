@@ -45,7 +45,8 @@ const equipmentTypeInput = z.object({
 const checklistStepInput = z.object({
   stepNumber: z.number().int().positive(),
   description: z.string().min(1, "Step description is required"),
-  expectedResult: z.enum(["pass", "fail"]),
+  expectedResult: z.enum(["pass", "fail", "flag"]),
+  expectedValue: z.string().optional(),
 });
 
 const preservationProcedureInput = z.object({
@@ -84,7 +85,8 @@ const inventoryUnitInput = z.object({
 });
 
 const checklistResultStepInput = checklistStepInput.extend({
-  actualResult: z.enum(["pass", "fail"]),
+  actualResult: z.enum(["pass", "fail", "flag"]),
+  actualValue: z.string().optional(),
 });
 
 const checklistResultInput = z.object({

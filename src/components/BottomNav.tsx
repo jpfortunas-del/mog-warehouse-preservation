@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { navItems } from "@/components/nav-items";
+import { isNavItemActive, navItems } from "@/components/nav-items";
 
 export default function BottomNav() {
   const [location] = useLocation();
@@ -7,7 +7,7 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-16 border-t bg-modec-navy flex items-center overflow-x-auto px-1 z-40">
       {navItems.map(item => {
-        const isActive = location.startsWith(item.path);
+        const isActive = isNavItemActive(location, item.path);
         return (
           <Link
             key={item.path}

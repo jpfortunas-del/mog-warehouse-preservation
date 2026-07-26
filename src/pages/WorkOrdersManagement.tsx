@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -42,6 +43,12 @@ const STATUS_VARIANT: Record<Status, "secondary" | "cyan" | "default"> = {
   open: "secondary",
   in_progress: "cyan",
   completed: "default",
+};
+
+const EXPECTED_RESULT_LABEL: Record<"pass" | "fail" | "flag", string> = {
+  pass: "Pass",
+  fail: "Fail",
+  flag: "Flag",
 };
 
 type FormState = {
@@ -140,12 +147,16 @@ export default function WorkOrdersManagement() {
   function openComplete(item: WorkOrder) {
     const checklist = checklistForWorkOrder(item);
     setCompleting(item);
-    setStepResults(checklist.map(step => ({ ...step, actualResult: step.expectedResult })));
+    setStepResults(checklist.map(step => ({ ...step, actualResult: step.expectedResult, actualValue: "" })));
     setCompleteOpen(true);
   }
 
-  function updateStepResult(index: number, actualResult: "pass" | "fail") {
+  function updateStepResult(index: number, actualResult: "pass" | "fail" | "flag") {
     setStepResults(results => results.map((r, i) => (i === index ? { ...r, actualResult } : r)));
+  }
+
+  function updateStepValue(index: number, actualValue: string) {
+    setStepResults(results => results.map((r, i) => (i === index ? { ...r, actualValue } : r)));
   }
 
   function handleCompleteSubmit(e: React.FormEvent) {
@@ -154,7 +165,10 @@ export default function WorkOrdersManagement() {
     completeMutation.mutate({
       id: completing.id,
       status: "completed",
-      checklistResult: stepResults.length > 0 ? { steps: stepResults } : null,
+      checklistResult:
+        stepResults.length > 0
+          ? { steps: stepResults.map(step => ({ ...step, actualValue: step.actualValue || undefined })) }
+          : null,
     });
   }
 
@@ -346,20 +360,29 @@ export default function WorkOrdersManagement() {
                   <div className="flex flex-1 flex-col gap-2">
                     <p className="text-sm">{step.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      Expected: {step.expectedResult === "pass" ? "Pass" : "Fail"}
+                      Expected: {EXPECTED_RESULT_LABEL[step.expectedResult]}
+                      {step.expectedValue ? ` (${step.expectedValue})` : ""}
                     </p>
-                    <Select
-                      value={step.actualResult}
-                      onValueChange={value => updateStepResult(index, value as "pass" | "fail")}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pass">Actual: Pass</SelectItem>
-                        <SelectItem value="fail">Actual: Fail</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex gap-2">
+                      <Select
+                        value={step.actualResult}
+                        onValueChange={value => updateStepResult(index, value as "pass" | "fail" | "flag")}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pass">Actual: Pass</SelectItem>
+                          <SelectItem value="fail">Actual: Fail</SelectItem>
+                          <SelectItem value="flag">Actual: Flag</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        placeholder="Actual value (optional)"
+                        value={step.actualValue ?? ""}
+                        onChange={e => updateStepValue(index, e.target.value)}
+                      />
+                    </div>
                   </div>
                 </div>
               ))}

@@ -27,11 +27,13 @@ export type PreservationProcedure = typeof preservationProcedures.$inferSelect;
 export type InsertPreservationProcedure = typeof preservationProcedures.$inferInsert;
 
 // A single checklist step defined on a Preservation Procedure. expectedResult is the
-// pass/fail outcome the technician should expect when the step is executed correctly.
+// pass/fail/flag outcome the technician should expect when the step is executed correctly.
+// expectedValue is an optional freeform reading the step expects (e.g. "more than 2mbar").
 export type ChecklistStep = {
   stepNumber: number;
   description: string;
-  expectedResult: "pass" | "fail";
+  expectedResult: "pass" | "fail" | "flag";
+  expectedValue?: string;
 };
 
 export const maintenancePlans = mysqlTable(
@@ -111,8 +113,8 @@ export type InsertWorkOrder = typeof workOrders.$inferInsert;
 
 // Result of executing a Work Order's checklist. `note` covers freeform/automatic closure
 // messages (e.g. "closed automatically - unit consumed"); `steps` mirrors the linked
-// Procedure's checklist with the technician's actual pass/fail per step.
-export type ChecklistResultStep = ChecklistStep & { actualResult: "pass" | "fail" };
+// Procedure's checklist with the technician's actual pass/fail/flag and reading per step.
+export type ChecklistResultStep = ChecklistStep & { actualResult: "pass" | "fail" | "flag"; actualValue?: string };
 export type WorkOrderChecklistResult = {
   note?: string;
   steps?: ChecklistResultStep[];

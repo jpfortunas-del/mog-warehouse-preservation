@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +21,8 @@ import type { ChecklistStep } from "../../drizzle/schema";
 
 type StepFormState = {
   description: string;
-  expectedResult: "pass" | "fail";
+  expectedResult: "pass" | "fail" | "flag";
+  expectedValue: string;
 };
 
 type FormState = {
@@ -79,14 +79,21 @@ export default function PreservationProcedures() {
       steps: checklist
         .slice()
         .sort((a, b) => a.stepNumber - b.stepNumber)
-        .map(step => ({ description: step.description, expectedResult: step.expectedResult })),
+        .map(step => ({
+          description: step.description,
+          expectedResult: step.expectedResult,
+          expectedValue: step.expectedValue ?? "",
+        })),
       active: item.active,
     });
     setOpen(true);
   }
 
   function addStep() {
-    setForm(f => ({ ...f, steps: [...f.steps, { description: "", expectedResult: "pass" }] }));
+    setForm(f => ({
+      ...f,
+      steps: [...f.steps, { description: "", expectedResult: "pass", expectedValue: "" }],
+    }));
   }
 
   function removeStep(index: number) {
@@ -116,6 +123,7 @@ export default function PreservationProcedures() {
       stepNumber: i + 1,
       description: step.description,
       expectedResult: step.expectedResult,
+      expectedValue: step.expectedValue || undefined,
     }));
     const payload = {
       name: form.name,
@@ -145,10 +153,6 @@ export default function PreservationProcedures() {
 
   return (
     <div>
-      <PageHeader
-        title="Preservation Procedures"
-        description="Standardized preservation procedures by equipment type."
-      />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
           <Plus /> New Procedure
@@ -272,18 +276,28 @@ export default function PreservationProcedures() {
                         onChange={e => updateStep(index, { description: e.target.value })}
                         required
                       />
-                      <Select
-                        value={step.expectedResult}
-                        onValueChange={value => updateStep(index, { expectedResult: value as "pass" | "fail" })}
-                      >
-                        <SelectTrigger className="w-full">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pass">Expected: Pass</SelectItem>
-                          <SelectItem value="fail">Expected: Fail</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="flex gap-2">
+                        <Select
+                          value={step.expectedResult}
+                          onValueChange={value =>
+                            updateStep(index, { expectedResult: value as "pass" | "fail" | "flag" })
+                          }
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pass">Expected: Pass</SelectItem>
+                            <SelectItem value="fail">Expected: Fail</SelectItem>
+                            <SelectItem value="flag">Expected: Flag</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          placeholder="Expected value (optional)"
+                          value={step.expectedValue}
+                          onChange={e => updateStep(index, { expectedValue: e.target.value })}
+                        />
+                      </div>
                     </div>
                     <div className="flex flex-col">
                       <Button

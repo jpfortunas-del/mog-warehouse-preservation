@@ -1,7 +1,7 @@
-import { Redirect, Route, Switch } from "wouter";
+import { Route, Switch } from "wouter";
 import DashboardLayout from "@/components/DashboardLayout";
-import EquipmentTypes from "@/pages/EquipmentTypes";
-import PreservationProcedures from "@/pages/PreservationProcedures";
+import Dashboard from "@/pages/Dashboard";
+import Settings from "@/pages/Settings";
 import Plans from "@/pages/Plans";
 import Materials from "@/pages/Materials";
 import InventoryUnits from "@/pages/InventoryUnits";
@@ -11,15 +11,12 @@ function App() {
   return (
     <DashboardLayout>
       <Switch>
-        <Route path="/equipment-types" component={EquipmentTypes} />
-        <Route path="/preservation-procedures" component={PreservationProcedures} />
+        <Route path="/" component={Dashboard} />
+        <Route path="/settings/:tab?" component={Settings} />
         <Route path="/plans/:tab?" component={Plans} />
         <Route path="/materials" component={Materials} />
         <Route path="/inventory-units" component={InventoryUnits} />
         <Route path="/work-orders/:tab?" component={WorkOrders} />
-        <Route path="/">
-          <Redirect to="/equipment-types" />
-        </Route>
         <Route>
           <div className="text-center text-muted-foreground py-20">Page not found.</div>
         </Route>
