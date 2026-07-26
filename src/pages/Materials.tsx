@@ -49,19 +49,24 @@ export default function Materials() {
   const [editing, setEditing] = useState<Material | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
 
-  const invalidate = () => utils.materials.list.invalidate();
+  const invalidate = () => {
+    utils.materials.list.invalidate();
+    utils.inventoryUnits.list.invalidate();
+  };
 
   const createMutation = trpc.materials.create.useMutation({
     onSuccess: () => {
       invalidate();
       setOpen(false);
     },
+    onError: error => alert(error.message),
   });
   const updateMutation = trpc.materials.update.useMutation({
     onSuccess: () => {
       invalidate();
       setOpen(false);
     },
+    onError: error => alert(error.message),
   });
   const deleteMutation = trpc.materials.delete.useMutation({
     onSuccess: () => invalidate(),

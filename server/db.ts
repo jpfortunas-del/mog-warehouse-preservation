@@ -149,18 +149,64 @@ export async function getMaterialById(id: number): Promise<Material | null> {
   return result[0] ?? null;
 }
 
+// Serials are seeded off the material's DB id (globally unique) rather than its
+// user-entered business code, since inventoryUnits.serial has a unique constraint
+// and the business code has no such guarantee.
+function buildInventoryUnitRows(materialId: number, count: number, startSeq: number): InsertInventoryUnit[] {
+  return Array.from({ length: count }, (_, i) => ({
+    materialId,
+    serial: `MAT-${materialId}-${String(startSeq + i).padStart(3, "0")}`,
+    status: "available",
+  }));
+}
+
 export async function createMaterial(data: InsertMaterial): Promise<Material> {
-  const result = await getDb().insert(materials).values(data).$returningId();
-  const created = await getMaterialById(result[0].id);
-  if (!created) throw new Error("Failed to create material");
-  return created;
+  return getDb().transaction(async tx => {
+    const result = await tx.insert(materials).values(data).$returningId();
+    const materialId = result[0].id;
+
+    const quantity = data.quantity ?? 0;
+    if (quantity > 0) {
+      await tx.insert(inventoryUnits).values(buildInventoryUnitRows(materialId, quantity, 1));
+    }
+
+    const createdRows = await tx.select().from(materials).where(eq(materials.id, materialId)).limit(1);
+    const created = createdRows[0];
+    if (!created) throw new Error("Failed to create material");
+    return created;
+  });
 }
 
 export async function updateMaterial(id: number, data: Partial<InsertMaterial>): Promise<Material> {
-  await getDb().update(materials).set(data).where(eq(materials.id, id));
-  const updated = await getMaterialById(id);
-  if (!updated) throw new Error("Material not found");
-  return updated;
+  return getDb().transaction(async tx => {
+    let existingCount = 0;
+    if (data.quantity !== undefined) {
+      const existingUnits = await tx
+        .select({ id: inventoryUnits.id })
+        .from(inventoryUnits)
+        .where(eq(inventoryUnits.materialId, id));
+      existingCount = existingUnits.length;
+      if (data.quantity < existingCount) {
+        throw new Error(
+          `Não é possível reduzir a quantidade para ${data.quantity}: já existem ${existingCount} unidade(s) de inventário cadastradas para este material. Remova unidades manualmente antes de reduzir a quantidade.`
+        );
+      }
+    }
+
+    await tx.update(materials).set(data).where(eq(materials.id, id));
+
+    if (data.quantity !== undefined) {
+      const toCreate = data.quantity - existingCount;
+      if (toCreate > 0) {
+        await tx.insert(inventoryUnits).values(buildInventoryUnitRows(id, toCreate, existingCount + 1));
+      }
+    }
+
+    const updatedRows = await tx.select().from(materials).where(eq(materials.id, id)).limit(1);
+    const updated = updatedRows[0];
+    if (!updated) throw new Error("Material not found");
+    return updated;
+  });
 }
 
 export async function deleteMaterial(id: number): Promise<void> {
