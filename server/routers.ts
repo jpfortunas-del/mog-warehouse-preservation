@@ -31,48 +31,51 @@ import {
 // update inputs, a default would overwrite the existing DB value whenever the client
 // omits the field, instead of leaving it untouched.
 const equipmentTypeInput = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  code: z.string().min(1, "Código é obrigatório"),
+  name: z.string().min(1, "Name is required"),
+  code: z.string().min(1, "Code is required"),
   preservable: z.boolean(),
   description: z.string().optional().nullable(),
   active: z.boolean(),
 });
 
 const preservationProcedureInput = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
+  name: z.string().min(1, "Name is required"),
   checklist: z.array(z.string()).nullish(),
   description: z.string().optional().nullable(),
-  equipmentTypeId: z.number().int().positive("Tipo de equipamento é obrigatório"),
+  equipmentTypeId: z.number().int().positive("Equipment type is required"),
   active: z.boolean(),
 });
 
 const maintenancePlanInput = z.object({
-  equipmentTypeId: z.number().int().positive("Tipo de equipamento é obrigatório"),
-  preservationProcedureId: z.number().int().positive("Procedimento é obrigatório"),
-  interval: z.number().int().positive("Intervalo deve ser maior que zero"),
+  equipmentTypeId: z.number().int().positive("Equipment type is required"),
+  preservationProcedureId: z.number().int().positive("Procedure is required"),
+  interval: z.number().int().positive("Interval must be greater than zero"),
   active: z.boolean(),
 });
 
+// preservable is intentionally not accepted from the client here: it's always
+// derived from the linked Equipment Type (see createMaterial/updateMaterial).
 const materialInput = z.object({
-  materialId: z.string().min(1, "Código é obrigatório"),
-  name: z.string().min(1, "Nome é obrigatório"),
+  materialId: z.string().min(1, "Code is required"),
+  name: z.string().min(1, "Name is required"),
   description: z.string().optional().nullable(),
-  quantity: z.number().int().nonnegative("Quantidade não pode ser negativa"),
-  equipmentTypeId: z.number().int().positive("Tipo de equipamento é obrigatório"),
-  preservable: z.boolean(),
+  quantity: z.number().int().nonnegative("Quantity cannot be negative"),
+  equipmentTypeId: z.number().int().positive("Equipment type is required"),
+  defaultLocation: z.string().optional().nullable(),
+  receivedDate: z.string().optional().nullable(),
   active: z.boolean(),
 });
 
 const inventoryUnitInput = z.object({
-  materialId: z.number().int().positive("Material é obrigatório"),
-  serial: z.string().min(1, "Número de série é obrigatório"),
+  materialId: z.number().int().positive("Material is required"),
+  serial: z.string().min(1, "Serial number is required"),
   status: z.enum(["available", "reserved", "consumed"]),
   location: z.string().optional().nullable(),
 });
 
 const workOrderInput = z.object({
-  planId: z.number().int().positive("Plano de manutenção é obrigatório"),
-  inventoryUnitId: z.number().int().positive("Unidade de inventário é obrigatória"),
+  planId: z.number().int().positive("Maintenance plan is required"),
+  inventoryUnitId: z.number().int().positive("Inventory unit is required"),
   status: z.enum(["open", "in_progress", "completed"]),
 });
 

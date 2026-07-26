@@ -23,9 +23,9 @@ type InventoryUnit = inferRouterOutputs<AppRouter>["inventoryUnits"]["list"][num
 type Status = InventoryUnit["status"];
 
 const STATUS_LABEL: Record<Status, string> = {
-  available: "Disponível",
-  reserved: "Reservado",
-  consumed: "Consumido",
+  available: "Available",
+  reserved: "Reserved",
+  consumed: "Consumed",
 };
 
 const STATUS_VARIANT: Record<Status, "cyan" | "default" | "destructive"> = {
@@ -103,7 +103,7 @@ export default function InventoryUnits() {
   }
 
   function handleDelete(item: InventoryUnit) {
-    if (confirm(`Excluir a unidade de inventário "${item.serial}"?`)) {
+    if (confirm(`Delete inventory unit "${item.serial}"?`)) {
       deleteMutation.mutate({ id: item.id });
     }
   }
@@ -119,11 +119,11 @@ export default function InventoryUnits() {
     <div>
       <PageHeader
         title="Inventory Units"
-        description="Unidades individuais rastreadas por número de série, localização e status de preservação."
+        description="Individual units tracked by serial number, location, and preservation status."
       />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
-          <Plus /> Nova Unidade
+          <Plus /> New Unit
         </Button>
       </div>
       <Card>
@@ -131,25 +131,25 @@ export default function InventoryUnits() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Número de Série</TableHead>
+                <TableHead>Serial Number</TableHead>
                 <TableHead>Material</TableHead>
-                <TableHead>Localização</TableHead>
+                <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Carregando...
+                    Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && inventoryUnits.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhuma unidade de inventário cadastrada.
+                    No inventory units registered.
                   </TableCell>
                 </TableRow>
               )}
@@ -179,7 +179,7 @@ export default function InventoryUnits() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Unidade de Inventário" : "Nova Unidade de Inventário"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Inventory Unit" : "New Inventory Unit"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid gap-2">
@@ -189,7 +189,7 @@ export default function InventoryUnits() {
                 onValueChange={value => setForm({ ...form, materialId: value })}
               >
                 <SelectTrigger id="materialId" className="w-full">
-                  <SelectValue placeholder="Selecione um material" />
+                  <SelectValue placeholder="Select a material" />
                 </SelectTrigger>
                 <SelectContent>
                   {materials.map(m => (
@@ -201,7 +201,7 @@ export default function InventoryUnits() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="serial">Número de Série</Label>
+              <Label htmlFor="serial">Serial Number</Label>
               <Input
                 id="serial"
                 value={form.serial}
@@ -210,7 +210,7 @@ export default function InventoryUnits() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="location">Localização</Label>
+              <Label htmlFor="location">Location</Label>
               <Input
                 id="location"
                 value={form.location}
@@ -237,10 +237,10 @@ export default function InventoryUnits() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
+                Cancel
               </Button>
               <Button type="submit" disabled={isSaving || !form.materialId}>
-                {isSaving ? "Salvando..." : "Salvar"}
+                {isSaving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>

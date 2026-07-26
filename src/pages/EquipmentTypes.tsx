@@ -90,7 +90,7 @@ export default function EquipmentTypes() {
   }
 
   function handleDelete(item: EquipmentType) {
-    if (confirm(`Excluir o tipo de equipamento "${item.name}"?`)) {
+    if (confirm(`Delete equipment type "${item.name}"?`)) {
       deleteMutation.mutate({ id: item.id });
     }
   }
@@ -101,11 +101,11 @@ export default function EquipmentTypes() {
     <div>
       <PageHeader
         title="Equipment Types"
-        description="Categorias de equipamentos monitorados no processo de preservação de warehouse."
+        description="Equipment categories monitored in the warehouse preservation process."
       />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
-          <Plus /> Novo Tipo de Equipamento
+          <Plus /> New Equipment Type
         </Button>
       </div>
       <Card>
@@ -113,26 +113,26 @@ export default function EquipmentTypes() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Preservável</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Preservable</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Carregando...
+                    Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && equipmentTypes.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    Nenhum tipo de equipamento cadastrado.
+                    No equipment types registered.
                   </TableCell>
                 </TableRow>
               )}
@@ -143,12 +143,12 @@ export default function EquipmentTypes() {
                   <TableCell className="text-muted-foreground">{item.description || "—"}</TableCell>
                   <TableCell>
                     <Badge variant={item.preservable ? "cyan" : "secondary"}>
-                      {item.preservable ? "Sim" : "Não"}
+                      {item.preservable ? "Yes" : "No"}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={item.active ? "cyan" : "destructive"}>
-                      {item.active ? "Ativo" : "Inativo"}
+                      {item.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -169,11 +169,11 @@ export default function EquipmentTypes() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Tipo de Equipamento" : "Novo Tipo de Equipamento"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Equipment Type" : "New Equipment Type"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="code">Código</Label>
+              <Label htmlFor="code">Code</Label>
               <Input
                 id="code"
                 value={form.code}
@@ -182,7 +182,7 @@ export default function EquipmentTypes() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 value={form.name}
@@ -191,7 +191,7 @@ export default function EquipmentTypes() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={form.description}
@@ -204,7 +204,7 @@ export default function EquipmentTypes() {
                 checked={form.preservable}
                 onCheckedChange={checked => setForm({ ...form, preservable: checked === true })}
               />
-              <Label htmlFor="preservable">Preservável</Label>
+              <Label htmlFor="preservable">Preservable</Label>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
@@ -212,14 +212,14 @@ export default function EquipmentTypes() {
                 checked={form.active}
                 onCheckedChange={checked => setForm({ ...form, active: checked === true })}
               />
-              <Label htmlFor="active">Ativo</Label>
+              <Label htmlFor="active">Active</Label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
+                Cancel
               </Button>
               <Button type="submit" disabled={isSaving}>
-                {isSaving ? "Salvando..." : "Salvar"}
+                {isSaving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>

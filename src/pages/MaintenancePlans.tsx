@@ -89,7 +89,7 @@ export default function MaintenancePlans() {
   }
 
   function handleDelete(item: MaintenancePlan) {
-    if (confirm(`Excluir este plano de manutenção?`)) {
+    if (confirm(`Delete this maintenance plan?`)) {
       deleteMutation.mutate({ id: item.id });
     }
   }
@@ -112,11 +112,11 @@ export default function MaintenancePlans() {
     <div>
       <PageHeader
         title="Maintenance Plans"
-        description="Planos de manutenção que agrupam procedimentos e periodicidade por equipamento."
+        description="Maintenance plans that group procedures and frequency by equipment."
       />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
-          <Plus /> Novo Plano
+          <Plus /> New Plan
         </Button>
       </div>
       <Card>
@@ -124,25 +124,25 @@ export default function MaintenancePlans() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tipo de Equipamento</TableHead>
-                <TableHead>Procedimento</TableHead>
-                <TableHead>Intervalo</TableHead>
+                <TableHead>Equipment Type</TableHead>
+                <TableHead>Procedure</TableHead>
+                <TableHead>Interval</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Carregando...
+                    Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && plans.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhum plano de manutenção cadastrado.
+                    No maintenance plans registered.
                   </TableCell>
                 </TableRow>
               )}
@@ -150,10 +150,10 @@ export default function MaintenancePlans() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{equipmentTypeName(item.equipmentTypeId)}</TableCell>
                   <TableCell>{procedureName(item.preservationProcedureId)}</TableCell>
-                  <TableCell>a cada {item.interval} dias</TableCell>
+                  <TableCell>every {item.interval} days</TableCell>
                   <TableCell>
                     <Badge variant={item.active ? "cyan" : "destructive"}>
-                      {item.active ? "Ativo" : "Inativo"}
+                      {item.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -174,11 +174,11 @@ export default function MaintenancePlans() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Plano de Manutenção" : "Novo Plano de Manutenção"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Maintenance Plan" : "New Maintenance Plan"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="equipmentTypeId">Tipo de Equipamento</Label>
+              <Label htmlFor="equipmentTypeId">Equipment Type</Label>
               <Select
                 value={form.equipmentTypeId}
                 onValueChange={value =>
@@ -186,7 +186,7 @@ export default function MaintenancePlans() {
                 }
               >
                 <SelectTrigger id="equipmentTypeId" className="w-full">
-                  <SelectValue placeholder="Selecione um tipo de equipamento" />
+                  <SelectValue placeholder="Select an equipment type" />
                 </SelectTrigger>
                 <SelectContent>
                   {equipmentTypes.map(et => (
@@ -198,14 +198,14 @@ export default function MaintenancePlans() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="preservationProcedureId">Procedimento de Preservação</Label>
+              <Label htmlFor="preservationProcedureId">Preservation Procedure</Label>
               <Select
                 value={form.preservationProcedureId}
                 onValueChange={value => setForm({ ...form, preservationProcedureId: value })}
                 disabled={!form.equipmentTypeId}
               >
                 <SelectTrigger id="preservationProcedureId" className="w-full">
-                  <SelectValue placeholder="Selecione um procedimento" />
+                  <SelectValue placeholder="Select a procedure" />
                 </SelectTrigger>
                 <SelectContent>
                   {availableProcedures.map(p => (
@@ -217,12 +217,12 @@ export default function MaintenancePlans() {
               </Select>
               {form.equipmentTypeId && availableProcedures.length === 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Nenhum procedimento cadastrado para este tipo de equipamento.
+                  No procedures registered for this equipment type.
                 </p>
               )}
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="interval">Intervalo (dias)</Label>
+              <Label htmlFor="interval">Interval (days)</Label>
               <Input
                 id="interval"
                 type="number"
@@ -238,17 +238,17 @@ export default function MaintenancePlans() {
                 checked={form.active}
                 onCheckedChange={checked => setForm({ ...form, active: checked === true })}
               />
-              <Label htmlFor="active">Ativo</Label>
+              <Label htmlFor="active">Active</Label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
+                Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSaving || !form.equipmentTypeId || !form.preservationProcedureId}
               >
-                {isSaving ? "Salvando..." : "Salvar"}
+                {isSaving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>

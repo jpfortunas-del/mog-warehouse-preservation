@@ -64,7 +64,7 @@ async function closeOpenWorkOrdersForUnit(tx: Tx, inventoryUnitId: number) {
     .set({
       status: "completed",
       closedAt: new Date(),
-      checklistResult: { note: "Encerrada automaticamente por saída de estoque da unidade de inventário." },
+      checklistResult: { note: "Automatically closed because the inventory unit left stock." },
     })
     .where(
       and(eq(workOrders.inventoryUnitId, inventoryUnitId), inArray(workOrders.status, ["open", "in_progress"]))
@@ -186,25 +186,50 @@ export async function getMaterialById(id: number): Promise<Material | null> {
 
 // Serials are seeded off the material's DB id (globally unique) rather than its
 // user-entered business code, since inventoryUnits.serial has a unique constraint
-// and the business code has no such guarantee.
-function buildInventoryUnitRows(materialId: number, count: number, startSeq: number): InsertInventoryUnit[] {
+// and the business code has no such guarantee. New units inherit the material's
+// default storage bin and received date.
+function buildInventoryUnitRows(
+  materialId: number,
+  count: number,
+  startSeq: number,
+  location: string | null,
+  receivedDate: string | null
+): InsertInventoryUnit[] {
   return Array.from({ length: count }, (_, i) => ({
     materialId,
     serial: `MAT-${materialId}-${String(startSeq + i).padStart(3, "0")}`,
     status: "available",
+    location,
+    receivedDate,
   }));
+}
+
+// preservable is never trusted from the client: it always mirrors the linked
+// Equipment Type's preservable flag, resolved fresh on every write.
+async function getEquipmentTypeOrThrow(tx: Tx, id: number): Promise<EquipmentType> {
+  const rows = await tx.select().from(equipmentTypes).where(eq(equipmentTypes.id, id)).limit(1);
+  const equipmentType = rows[0];
+  if (!equipmentType) throw new Error("Equipment type not found");
+  return equipmentType;
 }
 
 export async function createMaterial(data: InsertMaterial): Promise<Material> {
   return getDb().transaction(async tx => {
-    const result = await tx.insert(materials).values(data).$returningId();
+    const equipmentType = await getEquipmentTypeOrThrow(tx, data.equipmentTypeId);
+
+    const result = await tx
+      .insert(materials)
+      .values({ ...data, preservable: equipmentType.preservable })
+      .$returningId();
     const materialId = result[0].id;
 
     const quantity = data.quantity ?? 0;
     if (quantity > 0) {
       const insertedUnits = await tx
         .insert(inventoryUnits)
-        .values(buildInventoryUnitRows(materialId, quantity, 1))
+        .values(
+          buildInventoryUnitRows(materialId, quantity, 1, data.defaultLocation ?? null, data.receivedDate ?? null)
+        )
         .$returningId();
       await activateEnteringInventoryUnits(
         tx,
@@ -222,6 +247,15 @@ export async function createMaterial(data: InsertMaterial): Promise<Material> {
 
 export async function updateMaterial(id: number, data: Partial<InsertMaterial>): Promise<Material> {
   return getDb().transaction(async tx => {
+    const existingRows = await tx.select().from(materials).where(eq(materials.id, id)).limit(1);
+    const existingMaterial = existingRows[0];
+    if (!existingMaterial) throw new Error("Material not found");
+
+    const equipmentType = await getEquipmentTypeOrThrow(
+      tx,
+      data.equipmentTypeId ?? existingMaterial.equipmentTypeId
+    );
+
     let existingCount = 0;
     if (data.quantity !== undefined) {
       const existingUnits = await tx
@@ -231,12 +265,15 @@ export async function updateMaterial(id: number, data: Partial<InsertMaterial>):
       existingCount = existingUnits.length;
       if (data.quantity < existingCount) {
         throw new Error(
-          `Não é possível reduzir a quantidade para ${data.quantity}: já existem ${existingCount} unidade(s) de inventário cadastradas para este material. Remova unidades manualmente antes de reduzir a quantidade.`
+          `Cannot reduce quantity to ${data.quantity}: ${existingCount} inventory unit(s) already exist for this material. Remove units manually before reducing the quantity.`
         );
       }
     }
 
-    await tx.update(materials).set(data).where(eq(materials.id, id));
+    await tx
+      .update(materials)
+      .set({ ...data, preservable: equipmentType.preservable })
+      .where(eq(materials.id, id));
 
     const updatedRows = await tx.select().from(materials).where(eq(materials.id, id)).limit(1);
     const updated = updatedRows[0];
@@ -247,7 +284,9 @@ export async function updateMaterial(id: number, data: Partial<InsertMaterial>):
       if (toCreate > 0) {
         const insertedUnits = await tx
           .insert(inventoryUnits)
-          .values(buildInventoryUnitRows(id, toCreate, existingCount + 1))
+          .values(
+            buildInventoryUnitRows(id, toCreate, existingCount + 1, updated.defaultLocation, updated.receivedDate)
+          )
           .$returningId();
         await activateEnteringInventoryUnits(
           tx,
@@ -350,7 +389,14 @@ export async function createWorkOrder(data: InsertWorkOrder): Promise<WorkOrder>
 }
 
 export async function updateWorkOrder(id: number, data: Partial<InsertWorkOrder>): Promise<WorkOrder> {
-  await getDb().update(workOrders).set(data).where(eq(workOrders.id, id));
+  // Manual completion (via the Work Orders CRUD) needs closedAt populated too, since
+  // Plans Overview classification relies on it — mirrors the automatic closure path.
+  const patch = { ...data };
+  if (patch.status === "completed" && patch.closedAt === undefined) {
+    patch.closedAt = new Date();
+  }
+
+  await getDb().update(workOrders).set(patch).where(eq(workOrders.id, id));
   const updated = await getWorkOrderById(id);
   if (!updated) throw new Error("Work order not found");
   return updated;

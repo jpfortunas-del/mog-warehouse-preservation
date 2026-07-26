@@ -22,9 +22,9 @@ type WorkOrder = inferRouterOutputs<AppRouter>["workOrders"]["list"][number];
 type Status = WorkOrder["status"];
 
 const STATUS_LABEL: Record<Status, string> = {
-  open: "Aberta",
-  in_progress: "Em Andamento",
-  completed: "Concluída",
+  open: "Open",
+  in_progress: "In Progress",
+  completed: "Completed",
 };
 
 const STATUS_VARIANT: Record<Status, "secondary" | "cyan" | "default"> = {
@@ -102,7 +102,7 @@ export default function WorkOrders() {
   }
 
   function handleDelete(item: WorkOrder) {
-    if (confirm(`Excluir esta ordem de serviço?`)) {
+    if (confirm(`Delete this work order?`)) {
       deleteMutation.mutate({ id: item.id });
     }
   }
@@ -111,7 +111,7 @@ export default function WorkOrders() {
     const plan = maintenancePlans.find(p => p.id === id);
     if (!plan) return `#${id}`;
     const equipmentType = equipmentTypes.find(e => e.id === plan.equipmentTypeId);
-    return `Plano #${plan.id} — ${equipmentType?.name ?? `Tipo #${plan.equipmentTypeId}`}`;
+    return `Plan #${plan.id} — ${equipmentType?.name ?? `Type #${plan.equipmentTypeId}`}`;
   }
 
   function inventoryUnitLabel(id: number) {
@@ -127,11 +127,11 @@ export default function WorkOrders() {
     <div>
       <PageHeader
         title="Work Orders"
-        description="Ordens de serviço de preservação, manutenção preventiva e corretiva."
+        description="Preservation, preventive, and corrective maintenance work orders."
       />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
-          <Plus /> Nova Ordem de Serviço
+          <Plus /> New Work Order
         </Button>
       </div>
       <Card>
@@ -139,24 +139,24 @@ export default function WorkOrders() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Plano de Manutenção</TableHead>
-                <TableHead>Unidade de Inventário</TableHead>
+                <TableHead>Maintenance Plan</TableHead>
+                <TableHead>Inventory Unit</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    Carregando...
+                    Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && workOrders.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    Nenhuma ordem de serviço cadastrada.
+                    No work orders registered.
                   </TableCell>
                 </TableRow>
               )}
@@ -185,17 +185,17 @@ export default function WorkOrders() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Work Order" : "New Work Order"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="planId">Plano de Manutenção</Label>
+              <Label htmlFor="planId">Maintenance Plan</Label>
               <Select
                 value={form.planId}
                 onValueChange={value => setForm({ ...form, planId: value })}
               >
                 <SelectTrigger id="planId" className="w-full">
-                  <SelectValue placeholder="Selecione um plano de manutenção" />
+                  <SelectValue placeholder="Select a maintenance plan" />
                 </SelectTrigger>
                 <SelectContent>
                   {maintenancePlans.map(plan => (
@@ -207,13 +207,13 @@ export default function WorkOrders() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="inventoryUnitId">Unidade de Inventário</Label>
+              <Label htmlFor="inventoryUnitId">Inventory Unit</Label>
               <Select
                 value={form.inventoryUnitId}
                 onValueChange={value => setForm({ ...form, inventoryUnitId: value })}
               >
                 <SelectTrigger id="inventoryUnitId" className="w-full">
-                  <SelectValue placeholder="Selecione uma unidade de inventário" />
+                  <SelectValue placeholder="Select an inventory unit" />
                 </SelectTrigger>
                 <SelectContent>
                   {inventoryUnits.map(unit => (
@@ -244,13 +244,13 @@ export default function WorkOrders() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
+                Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSaving || !form.planId || !form.inventoryUnitId}
               >
-                {isSaving ? "Salvando..." : "Salvar"}
+                {isSaving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>

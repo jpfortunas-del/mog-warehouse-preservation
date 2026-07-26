@@ -1,4 +1,4 @@
-import { boolean, foreignKey, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, date, foreignKey, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const equipmentTypes = mysqlTable("equipment_types", {
   id: int("id").autoincrement().primaryKey(),
@@ -61,6 +61,8 @@ export const materials = mysqlTable("materials", {
     .references(() => equipmentTypes.id),
   preservable: boolean("preservable").notNull().default(false),
   active: boolean("active").notNull().default(true),
+  defaultLocation: varchar("default_location", { length: 255 }),
+  receivedDate: date("received_date", { mode: "string" }),
 });
 
 export type Material = typeof materials.$inferSelect;
@@ -74,6 +76,7 @@ export const inventoryUnits = mysqlTable("inventory_units", {
   serial: varchar("serial", { length: 255 }).notNull().unique(),
   status: mysqlEnum("status", ["available", "reserved", "consumed"]).notNull().default("available"),
   location: varchar("location", { length: 255 }),
+  receivedDate: date("received_date", { mode: "string" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

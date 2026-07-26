@@ -6,6 +6,7 @@ import MaintenancePlans from "@/pages/MaintenancePlans";
 import Materials from "@/pages/Materials";
 import InventoryUnits from "@/pages/InventoryUnits";
 import WorkOrders from "@/pages/WorkOrders";
+import PlansOverview from "@/pages/PlansOverview";
 
 function App() {
   return (
@@ -17,11 +18,12 @@ function App() {
         <Route path="/materials" component={Materials} />
         <Route path="/inventory-units" component={InventoryUnits} />
         <Route path="/work-orders" component={WorkOrders} />
+        <Route path="/plans-overview" component={PlansOverview} />
         <Route path="/">
           <Redirect to="/equipment-types" />
         </Route>
         <Route>
-          <div className="text-center text-muted-foreground py-20">Página não encontrada.</div>
+          <div className="text-center text-muted-foreground py-20">Page not found.</div>
         </Route>
       </Switch>
     </DashboardLayout>

@@ -96,7 +96,7 @@ export default function PreservationProcedures() {
   }
 
   function handleDelete(item: ProcedureRow) {
-    if (confirm(`Excluir o procedimento "${item.name}"?`)) {
+    if (confirm(`Delete procedure "${item.name}"?`)) {
       deleteMutation.mutate({ id: item.id });
     }
   }
@@ -111,11 +111,11 @@ export default function PreservationProcedures() {
     <div>
       <PageHeader
         title="Preservation Procedures"
-        description="Procedimentos padronizados de preservação por tipo de equipamento."
+        description="Standardized preservation procedures by equipment type."
       />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
-          <Plus /> Novo Procedimento
+          <Plus /> New Procedure
         </Button>
       </div>
       <Card>
@@ -123,25 +123,25 @@ export default function PreservationProcedures() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Procedimento</TableHead>
-                <TableHead>Tipo de Equipamento</TableHead>
+                <TableHead>Procedure</TableHead>
+                <TableHead>Equipment Type</TableHead>
                 <TableHead>Checklist</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Carregando...
+                    Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && procedures.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhum procedimento cadastrado.
+                    No procedures registered.
                   </TableCell>
                 </TableRow>
               )}
@@ -150,11 +150,11 @@ export default function PreservationProcedures() {
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{equipmentTypeName(item.equipmentTypeId)}</TableCell>
                   <TableCell className="text-muted-foreground">
-                    {Array.isArray(item.checklist) ? `${item.checklist.length} itens` : "—"}
+                    {Array.isArray(item.checklist) ? `${item.checklist.length} items` : "—"}
                   </TableCell>
                   <TableCell>
                     <Badge variant={item.active ? "cyan" : "destructive"}>
-                      {item.active ? "Ativo" : "Inativo"}
+                      {item.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -175,11 +175,11 @@ export default function PreservationProcedures() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Procedimento" : "Novo Procedimento"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Procedure" : "New Procedure"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 value={form.name}
@@ -188,13 +188,13 @@ export default function PreservationProcedures() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="equipmentTypeId">Tipo de Equipamento</Label>
+              <Label htmlFor="equipmentTypeId">Equipment Type</Label>
               <Select
                 value={form.equipmentTypeId}
                 onValueChange={value => setForm({ ...form, equipmentTypeId: value })}
               >
                 <SelectTrigger id="equipmentTypeId" className="w-full">
-                  <SelectValue placeholder="Selecione um tipo de equipamento" />
+                  <SelectValue placeholder="Select an equipment type" />
                 </SelectTrigger>
                 <SelectContent>
                   {equipmentTypes.map(et => (
@@ -206,7 +206,7 @@ export default function PreservationProcedures() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={form.description}
@@ -214,12 +214,12 @@ export default function PreservationProcedures() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="checklist">Checklist (um item por linha)</Label>
+              <Label htmlFor="checklist">Checklist (one item per line)</Label>
               <Textarea
                 id="checklist"
                 value={form.checklist}
                 onChange={e => setForm({ ...form, checklist: e.target.value })}
-                placeholder={"Verificar vedação\nAplicar filme VCI"}
+                placeholder={"Check sealing\nApply VCI film"}
               />
             </div>
             <div className="flex items-center gap-2">
@@ -228,14 +228,14 @@ export default function PreservationProcedures() {
                 checked={form.active}
                 onCheckedChange={checked => setForm({ ...form, active: checked === true })}
               />
-              <Label htmlFor="active">Ativo</Label>
+              <Label htmlFor="active">Active</Label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
+                Cancel
               </Button>
               <Button type="submit" disabled={isSaving || !form.equipmentTypeId}>
-                {isSaving ? "Salvando..." : "Salvar"}
+                {isSaving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>

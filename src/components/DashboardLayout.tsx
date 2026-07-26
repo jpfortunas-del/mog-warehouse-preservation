@@ -75,7 +75,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
           <SidebarFooter className="p-3 border-t border-sidebar-border">
             <p className="text-[11px] text-white/50 px-2 group-data-[collapsible=icon]:hidden">
-              MODEC · Uso interno
+              MODEC · Internal use
             </p>
           </SidebarFooter>
         </Sidebar>

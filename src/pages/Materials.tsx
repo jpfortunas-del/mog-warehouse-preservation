@@ -26,7 +26,8 @@ type FormState = {
   description: string;
   quantity: string;
   equipmentTypeId: string;
-  preservable: boolean;
+  defaultLocation: string;
+  receivedDate: string;
   active: boolean;
 };
 
@@ -36,7 +37,8 @@ const emptyForm: FormState = {
   description: "",
   quantity: "0",
   equipmentTypeId: "",
-  preservable: false,
+  defaultLocation: "",
+  receivedDate: "",
   active: true,
 };
 
@@ -86,7 +88,8 @@ export default function Materials() {
       description: item.description ?? "",
       quantity: String(item.quantity),
       equipmentTypeId: String(item.equipmentTypeId),
-      preservable: item.preservable,
+      defaultLocation: item.defaultLocation ?? "",
+      receivedDate: item.receivedDate ?? "",
       active: item.active,
     });
     setOpen(true);
@@ -100,7 +103,8 @@ export default function Materials() {
       description: form.description || null,
       quantity: Number(form.quantity),
       equipmentTypeId: Number(form.equipmentTypeId),
-      preservable: form.preservable,
+      defaultLocation: form.defaultLocation || null,
+      receivedDate: form.receivedDate || null,
       active: form.active,
     };
     if (editing) {
@@ -111,26 +115,31 @@ export default function Materials() {
   }
 
   function handleDelete(item: Material) {
-    if (confirm(`Excluir o material "${item.name}"?`)) {
+    if (confirm(`Delete material "${item.name}"?`)) {
       deleteMutation.mutate({ id: item.id });
     }
   }
 
-  function equipmentTypeName(id: number) {
-    return equipmentTypes.find(e => e.id === id)?.name ?? `#${id}`;
+  function equipmentType(id: number) {
+    return equipmentTypes.find(e => e.id === id);
   }
 
+  function equipmentTypeName(id: number) {
+    return equipmentType(id)?.name ?? `#${id}`;
+  }
+
+  const selectedEquipmentType = form.equipmentTypeId ? equipmentType(Number(form.equipmentTypeId)) : undefined;
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   return (
     <div>
       <PageHeader
         title="Materials"
-        description="Catálogo de materiais controlados no warehouse."
+        description="Catalog of materials tracked in the warehouse."
       />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
-          <Plus /> Novo Material
+          <Plus /> New Material
         </Button>
       </div>
       <Card>
@@ -138,27 +147,28 @@ export default function Materials() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Código</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Tipo de Equipamento</TableHead>
-                <TableHead>Qtd.</TableHead>
-                <TableHead>Preservável</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Equipment Type</TableHead>
+                <TableHead>Qty.</TableHead>
+                <TableHead>Storage Bin</TableHead>
+                <TableHead>Preservable</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    Carregando...
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && materials.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    Nenhum material cadastrado.
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    No materials registered.
                   </TableCell>
                 </TableRow>
               )}
@@ -168,14 +178,15 @@ export default function Materials() {
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{equipmentTypeName(item.equipmentTypeId)}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.defaultLocation || "—"}</TableCell>
                   <TableCell>
                     <Badge variant={item.preservable ? "cyan" : "secondary"}>
-                      {item.preservable ? "Sim" : "Não"}
+                      {item.preservable ? "Yes" : "No"}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <Badge variant={item.active ? "cyan" : "destructive"}>
-                      {item.active ? "Ativo" : "Inativo"}
+                      {item.active ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -196,11 +207,11 @@ export default function Materials() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editing ? "Editar Material" : "Novo Material"}</DialogTitle>
+            <DialogTitle>{editing ? "Edit Material" : "New Material"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="grid gap-2">
-              <Label htmlFor="materialId">Código</Label>
+              <Label htmlFor="materialId">Code</Label>
               <Input
                 id="materialId"
                 value={form.materialId}
@@ -209,7 +220,7 @@ export default function Materials() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="name">Nome</Label>
+              <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
                 value={form.name}
@@ -218,7 +229,7 @@ export default function Materials() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Descrição</Label>
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={form.description}
@@ -226,13 +237,13 @@ export default function Materials() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="equipmentTypeId">Tipo de Equipamento</Label>
+              <Label htmlFor="equipmentTypeId">Equipment Type</Label>
               <Select
                 value={form.equipmentTypeId}
                 onValueChange={value => setForm({ ...form, equipmentTypeId: value })}
               >
                 <SelectTrigger id="equipmentTypeId" className="w-full">
-                  <SelectValue placeholder="Selecione um tipo de equipamento" />
+                  <SelectValue placeholder="Select an equipment type" />
                 </SelectTrigger>
                 <SelectContent>
                   {equipmentTypes.map(et => (
@@ -244,7 +255,16 @@ export default function Materials() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="quantity">Quantidade</Label>
+              <Label>Preservable</Label>
+              <div>
+                <Badge variant={selectedEquipmentType?.preservable ? "cyan" : "secondary"}>
+                  {selectedEquipmentType ? (selectedEquipmentType.preservable ? "Yes" : "No") : "—"}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">Inherited from the selected equipment type.</p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="quantity">Quantity</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -254,13 +274,22 @@ export default function Materials() {
                 required
               />
             </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="preservable"
-                checked={form.preservable}
-                onCheckedChange={checked => setForm({ ...form, preservable: checked === true })}
+            <div className="grid gap-2">
+              <Label htmlFor="defaultLocation">Storage Bin</Label>
+              <Input
+                id="defaultLocation"
+                value={form.defaultLocation}
+                onChange={e => setForm({ ...form, defaultLocation: e.target.value })}
               />
-              <Label htmlFor="preservable">Preservável</Label>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="receivedDate">GR Date</Label>
+              <Input
+                id="receivedDate"
+                type="date"
+                value={form.receivedDate}
+                onChange={e => setForm({ ...form, receivedDate: e.target.value })}
+              />
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
@@ -268,14 +297,14 @@ export default function Materials() {
                 checked={form.active}
                 onCheckedChange={checked => setForm({ ...form, active: checked === true })}
               />
-              <Label htmlFor="active">Ativo</Label>
+              <Label htmlFor="active">Active</Label>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                Cancelar
+                Cancel
               </Button>
               <Button type="submit" disabled={isSaving || !form.equipmentTypeId}>
-                {isSaving ? "Salvando..." : "Salvar"}
+                {isSaving ? "Saving..." : "Save"}
               </Button>
             </DialogFooter>
           </form>
