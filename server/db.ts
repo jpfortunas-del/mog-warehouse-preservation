@@ -1,6 +1,13 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { equipmentTypes, preservationProcedures, maintenancePlans } from "../drizzle/schema";
+import {
+  equipmentTypes,
+  preservationProcedures,
+  maintenancePlans,
+  materials,
+  inventoryUnits,
+  workOrders,
+} from "../drizzle/schema";
 import type {
   EquipmentType,
   InsertEquipmentType,
@@ -8,6 +15,12 @@ import type {
   InsertPreservationProcedure,
   MaintenancePlan,
   InsertMaintenancePlan,
+  Material,
+  InsertMaterial,
+  InventoryUnit,
+  InsertInventoryUnit,
+  WorkOrder,
+  InsertWorkOrder,
 } from "../drizzle/schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -123,4 +136,94 @@ export async function updateMaintenancePlan(
 
 export async function deleteMaintenancePlan(id: number): Promise<void> {
   await getDb().delete(maintenancePlans).where(eq(maintenancePlans.id, id));
+}
+
+// Materials
+
+export async function getMaterials(): Promise<Material[]> {
+  return getDb().select().from(materials).orderBy(materials.id);
+}
+
+export async function getMaterialById(id: number): Promise<Material | null> {
+  const result = await getDb().select().from(materials).where(eq(materials.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createMaterial(data: InsertMaterial): Promise<Material> {
+  const result = await getDb().insert(materials).values(data).$returningId();
+  const created = await getMaterialById(result[0].id);
+  if (!created) throw new Error("Failed to create material");
+  return created;
+}
+
+export async function updateMaterial(id: number, data: Partial<InsertMaterial>): Promise<Material> {
+  await getDb().update(materials).set(data).where(eq(materials.id, id));
+  const updated = await getMaterialById(id);
+  if (!updated) throw new Error("Material not found");
+  return updated;
+}
+
+export async function deleteMaterial(id: number): Promise<void> {
+  await getDb().delete(materials).where(eq(materials.id, id));
+}
+
+// Inventory Units
+
+export async function getInventoryUnits(): Promise<InventoryUnit[]> {
+  return getDb().select().from(inventoryUnits).orderBy(inventoryUnits.id);
+}
+
+export async function getInventoryUnitById(id: number): Promise<InventoryUnit | null> {
+  const result = await getDb().select().from(inventoryUnits).where(eq(inventoryUnits.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createInventoryUnit(data: InsertInventoryUnit): Promise<InventoryUnit> {
+  const result = await getDb().insert(inventoryUnits).values(data).$returningId();
+  const created = await getInventoryUnitById(result[0].id);
+  if (!created) throw new Error("Failed to create inventory unit");
+  return created;
+}
+
+export async function updateInventoryUnit(
+  id: number,
+  data: Partial<InsertInventoryUnit>
+): Promise<InventoryUnit> {
+  await getDb().update(inventoryUnits).set(data).where(eq(inventoryUnits.id, id));
+  const updated = await getInventoryUnitById(id);
+  if (!updated) throw new Error("Inventory unit not found");
+  return updated;
+}
+
+export async function deleteInventoryUnit(id: number): Promise<void> {
+  await getDb().delete(inventoryUnits).where(eq(inventoryUnits.id, id));
+}
+
+// Work Orders
+
+export async function getWorkOrders(): Promise<WorkOrder[]> {
+  return getDb().select().from(workOrders).orderBy(workOrders.id);
+}
+
+export async function getWorkOrderById(id: number): Promise<WorkOrder | null> {
+  const result = await getDb().select().from(workOrders).where(eq(workOrders.id, id)).limit(1);
+  return result[0] ?? null;
+}
+
+export async function createWorkOrder(data: InsertWorkOrder): Promise<WorkOrder> {
+  const result = await getDb().insert(workOrders).values(data).$returningId();
+  const created = await getWorkOrderById(result[0].id);
+  if (!created) throw new Error("Failed to create work order");
+  return created;
+}
+
+export async function updateWorkOrder(id: number, data: Partial<InsertWorkOrder>): Promise<WorkOrder> {
+  await getDb().update(workOrders).set(data).where(eq(workOrders.id, id));
+  const updated = await getWorkOrderById(id);
+  if (!updated) throw new Error("Work order not found");
+  return updated;
+}
+
+export async function deleteWorkOrder(id: number): Promise<void> {
+  await getDb().delete(workOrders).where(eq(workOrders.id, id));
 }
