@@ -13,6 +13,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { trpc } from "@/lib/trpc";
 import type { AppRouter } from "../../server/routers";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -31,6 +32,12 @@ const CLASSIFICATION_LABEL: Record<Classification, string> = {
   green: "Up to date",
   yellow: "Pending",
   red: "Overdue",
+};
+
+const CLASSIFICATION_VARIANT: Record<Classification, "green" | "amber" | "destructive"> = {
+  green: "green",
+  yellow: "amber",
+  red: "destructive",
 };
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -159,7 +166,22 @@ export default function PlanAssignments() {
                     <TableRow>
                       <TableHead>Plan</TableHead>
                       <TableHead>Source</TableHead>
-                      <TableHead>Coverage</TableHead>
+                      <TableHead>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="cursor-help underline decoration-dotted underline-offset-4">
+                              Status
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="flex flex-col gap-0.5">
+                              <span>🟢 Up to date</span>
+                              <span>🟡 Pending</span>
+                              <span>🔴 Overdue</span>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -176,7 +198,9 @@ export default function PlanAssignments() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            {CLASSIFICATION_ICON[classification]} {CLASSIFICATION_LABEL[classification]}
+                            <Badge variant={CLASSIFICATION_VARIANT[classification]}>
+                              {CLASSIFICATION_ICON[classification]} {CLASSIFICATION_LABEL[classification]}
+                            </Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             <Button

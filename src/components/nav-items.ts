@@ -1,10 +1,9 @@
-import { Boxes, ClipboardList, LayoutDashboard, Package, Settings, CalendarCheck } from "lucide-react";
+import { Boxes, ClipboardList, LayoutDashboard, Settings, CalendarCheck } from "lucide-react";
 
 export const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Boxes, label: "Parts", path: "/parts" },
   { icon: CalendarCheck, label: "Plans", path: "/plans" },
-  { icon: Package, label: "Materials", path: "/materials" },
-  { icon: Boxes, label: "Inventory Units", path: "/inventory-units" },
   { icon: ClipboardList, label: "Work Orders", path: "/work-orders" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];

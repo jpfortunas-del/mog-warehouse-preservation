@@ -26,10 +26,10 @@ const RESULT_LABEL: Record<"pass" | "fail" | "flag", string> = {
   flag: "Flag",
 };
 
-const RESULT_VARIANT: Record<"pass" | "fail" | "flag", "default" | "destructive" | "cyan"> = {
-  pass: "default",
+const RESULT_VARIANT: Record<"pass" | "fail" | "flag", "green" | "destructive" | "amber"> = {
+  pass: "green",
   fail: "destructive",
-  flag: "cyan",
+  flag: "amber",
 };
 
 function formatIsoDate(iso: string) {

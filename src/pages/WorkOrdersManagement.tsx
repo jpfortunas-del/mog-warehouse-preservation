@@ -39,10 +39,10 @@ const STATUS_LABEL: Record<Status, string> = {
   completed: "Completed",
 };
 
-const STATUS_VARIANT: Record<Status, "secondary" | "cyan" | "default"> = {
+const STATUS_VARIANT: Record<Status, "secondary" | "amber" | "green"> = {
   open: "secondary",
-  in_progress: "cyan",
-  completed: "default",
+  in_progress: "amber",
+  completed: "green",
 };
 
 const EXPECTED_RESULT_LABEL: Record<"pass" | "fail" | "flag", string> = {

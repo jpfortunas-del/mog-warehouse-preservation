@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
-import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,9 +27,9 @@ const STATUS_LABEL: Record<Status, string> = {
   consumed: "Consumed",
 };
 
-const STATUS_VARIANT: Record<Status, "cyan" | "default" | "destructive"> = {
-  available: "cyan",
-  reserved: "default",
+const STATUS_VARIANT: Record<Status, "green" | "amber" | "destructive"> = {
+  available: "green",
+  reserved: "amber",
   consumed: "destructive",
 };
 
@@ -117,10 +116,6 @@ export default function InventoryUnits() {
 
   return (
     <div>
-      <PageHeader
-        title="Inventory Units"
-        description="Individual units tracked by serial number, location, and preservation status."
-      />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
           <Plus /> New Unit
@@ -157,7 +152,16 @@ export default function InventoryUnits() {
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.serial}</TableCell>
                   <TableCell>{materialName(item.materialId)}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.location || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {item.location ? (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {item.location}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={STATUS_VARIANT[item.status]}>{STATUS_LABEL[item.status]}</Badge>
                   </TableCell>

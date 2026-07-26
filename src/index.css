@@ -82,13 +82,13 @@
   --input: var(--modec-gray);
   --ring: var(--modec-blue);
 
-  --sidebar: var(--modec-navy);
-  --sidebar-foreground: #FFFFFF;
+  --sidebar: var(--modec-gray);
+  --sidebar-foreground: var(--modec-navy);
   --sidebar-primary: var(--modec-blue);
   --sidebar-primary-foreground: #FFFFFF;
   --sidebar-accent: var(--modec-cyan);
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-border: rgba(12, 48, 75, 0.15);
   --sidebar-ring: var(--modec-cyan);
 }
 

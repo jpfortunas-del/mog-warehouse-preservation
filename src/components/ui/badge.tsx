@@ -15,6 +15,8 @@ const badgeVariants = cva(
         outline: "text-foreground border-border",
         cyan: "border-transparent bg-modec-cyan text-white",
         navy: "border-transparent bg-modec-navy text-white",
+        green: "border-transparent bg-emerald-600 text-white",
+        amber: "border-transparent bg-amber-500 text-white",
       },
     },
     defaultVariants: {

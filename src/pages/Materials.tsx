@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -133,10 +132,6 @@ export default function Materials() {
 
   return (
     <div>
-      <PageHeader
-        title="Materials"
-        description="Catalog of materials tracked in the warehouse."
-      />
       <div className="mb-4 flex justify-end">
         <Button onClick={openCreate}>
           <Plus /> New Material
@@ -178,7 +173,16 @@ export default function Materials() {
                   <TableCell>{item.name}</TableCell>
                   <TableCell>{equipmentTypeName(item.equipmentTypeId)}</TableCell>
                   <TableCell>{item.quantity}</TableCell>
-                  <TableCell className="text-muted-foreground">{item.defaultLocation || "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {item.defaultLocation ? (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {item.defaultLocation}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
                   <TableCell>
                     <Badge variant={item.preservable ? "cyan" : "secondary"}>
                       {item.preservable ? "Yes" : "No"}
