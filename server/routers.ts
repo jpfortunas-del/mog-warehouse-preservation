@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { publicProcedure, router } from "./trpc";
+import { parseMaterialImportFile } from "./materialImport";
 import {
   getEquipmentTypes,
   createEquipmentType,
@@ -39,6 +41,9 @@ const equipmentTypeInput = z.object({
   code: z.string().min(1, "Code is required"),
   preservable: z.boolean(),
   description: z.string().optional().nullable(),
+  // Substring-matched against imported materials' name + description to auto-suggest this
+  // Equipment Type on the Import Materials review screen (see TP#12).
+  keywords: z.array(z.string().min(1)).nullish(),
   active: z.boolean(),
 });
 
@@ -114,6 +119,12 @@ const deactivateAssignmentInput = z.object({
 const assignmentLookupInput = z.object({
   inventoryUnitId: z.number().int().positive(),
   planId: z.number().int().positive(),
+});
+
+const materialImportParseInput = z.object({
+  // Base64-encoded file bytes: there's no multipart upload middleware configured, so the
+  // client reads the file locally and ships it through this mutation instead.
+  content: z.string().min(1, "File content is required"),
 });
 
 export const appRouter = router({
@@ -235,6 +246,16 @@ export const appRouter = router({
     hasOpenWorkOrder: publicProcedure
       .input(assignmentLookupInput)
       .query(({ input }) => hasOpenWorkOrderForAssignment(input.inventoryUnitId, input.planId)),
+  }),
+
+  materialImport: router({
+    parseFile: publicProcedure.input(materialImportParseInput).mutation(({ input }) => {
+      try {
+        return parseMaterialImportFile(input.content);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Could not read this file. Please upload a valid CSV or .xlsx file." });
+      }
+    }),
   }),
 });
 

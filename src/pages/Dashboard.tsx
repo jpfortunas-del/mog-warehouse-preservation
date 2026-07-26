@@ -62,6 +62,7 @@ export default function Dashboard() {
       <PageHeader
         title="Dashboard"
         description="Overview of materials, inventory units, and work orders."
+        badge={<Badge variant="cyan">{formatIsoDate(today)}</Badge>}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

@@ -107,9 +107,8 @@ export default function InventoryUnits() {
     }
   }
 
-  function materialName(id: number) {
-    const material = materials.find(m => m.id === id);
-    return material ? `${material.materialId} — ${material.name}` : `#${id}`;
+  function findMaterial(id: number) {
+    return materials.find(m => m.id === id);
   }
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
@@ -126,8 +125,9 @@ export default function InventoryUnits() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Serial Number</TableHead>
-                <TableHead>Material</TableHead>
+                <TableHead>Code</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Serial</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -136,22 +136,25 @@ export default function InventoryUnits() {
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && inventoryUnits.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                     No inventory units registered.
                   </TableCell>
                 </TableRow>
               )}
-              {inventoryUnits.map(item => (
+              {inventoryUnits.map(item => {
+                const material = findMaterial(item.materialId);
+                return (
                 <TableRow key={item.id}>
+                  <TableCell className="font-medium">{material?.materialId ?? `#${item.materialId}`}</TableCell>
+                  <TableCell>{material?.name ?? "—"}</TableCell>
                   <TableCell className="font-medium">{item.serial}</TableCell>
-                  <TableCell>{materialName(item.materialId)}</TableCell>
                   <TableCell className="text-muted-foreground">
                     {item.location ? (
                       <span className="inline-flex items-center gap-1">
@@ -174,7 +177,8 @@ export default function InventoryUnits() {
                     </Button>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

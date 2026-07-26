@@ -255,7 +255,7 @@ export default function PreservationProcedures() {
             </div>
             <div className="grid gap-2">
               <div className="flex items-center justify-between">
-                <Label>Checklist Steps</Label>
+                <Label className="text-primary font-semibold">Checklist Steps</Label>
                 <Button type="button" variant="outline" size="sm" onClick={addStep}>
                   <Plus /> Add Step
                 </Button>

@@ -1,0 +1,2 @@
+ALTER TABLE `inventory_units` DROP INDEX `inventory_units_serial_unique`;--> statement-breakpoint
+ALTER TABLE `inventory_units` ADD CONSTRAINT `inventory_units_material_serial_unique` UNIQUE(`material_id`,`serial`);

@@ -4,6 +4,7 @@ import Dashboard from "@/pages/Dashboard";
 import Settings from "@/pages/Settings";
 import Plans from "@/pages/Plans";
 import Parts from "@/pages/Parts";
+import MaterialImport from "@/pages/MaterialImport";
 import WorkOrders from "@/pages/WorkOrders";
 
 function App() {
@@ -13,6 +14,7 @@ function App() {
         <Route path="/" component={Dashboard} />
         <Route path="/settings" component={Settings} />
         <Route path="/plans/:tab?" component={Plans} />
+        <Route path="/parts/import" component={MaterialImport} />
         <Route path="/parts/:tab?" component={Parts} />
         <Route path="/work-orders/:tab?" component={WorkOrders} />
         <Route>

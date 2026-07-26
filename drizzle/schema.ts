@@ -1,4 +1,16 @@
-import { boolean, date, foreignKey, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import {
+  boolean,
+  date,
+  foreignKey,
+  int,
+  json,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/mysql-core";
 
 export const equipmentTypes = mysqlTable("equipment_types", {
   id: int("id").autoincrement().primaryKey(),
@@ -6,6 +18,9 @@ export const equipmentTypes = mysqlTable("equipment_types", {
   code: varchar("code", { length: 100 }).notNull().unique(),
   preservable: boolean("preservable").notNull().default(false),
   description: text("description"),
+  // Substring-matched (case-insensitive) against an imported material's name + description
+  // to auto-suggest an Equipment Type during Material import (see TP#12).
+  keywords: json("keywords").$type<string[]>(),
   active: boolean("active").notNull().default(true),
 });
 
@@ -78,17 +93,23 @@ export const materials = mysqlTable("materials", {
 export type Material = typeof materials.$inferSelect;
 export type InsertMaterial = typeof materials.$inferInsert;
 
-export const inventoryUnits = mysqlTable("inventory_units", {
-  id: int("id").autoincrement().primaryKey(),
-  materialId: int("material_id")
-    .notNull()
-    .references(() => materials.id),
-  serial: varchar("serial", { length: 255 }).notNull().unique(),
-  status: mysqlEnum("status", ["available", "reserved", "consumed"]).notNull().default("available"),
-  location: varchar("location", { length: 255 }),
-  receivedDate: date("received_date", { mode: "string" }),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+export const inventoryUnits = mysqlTable(
+  "inventory_units",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    materialId: int("material_id")
+      .notNull()
+      .references(() => materials.id),
+    // Sequential per material (see buildInventoryUnitRows in server/db.ts), not globally
+    // unique, so uniqueness is enforced as the (materialId, serial) pair below.
+    serial: varchar("serial", { length: 255 }).notNull(),
+    status: mysqlEnum("status", ["available", "reserved", "consumed"]).notNull().default("available"),
+    location: varchar("location", { length: 255 }),
+    receivedDate: date("received_date", { mode: "string" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  table => [uniqueIndex("inventory_units_material_serial_unique").on(table.materialId, table.serial)]
+);
 
 export type InventoryUnit = typeof inventoryUnits.$inferSelect;
 export type InsertInventoryUnit = typeof inventoryUnits.$inferInsert;

@@ -82,14 +82,18 @@
   --input: var(--modec-gray);
   --ring: var(--modec-blue);
 
-  --sidebar: var(--modec-gray);
-  --sidebar-foreground: var(--modec-navy);
+  /* Sidebar: white background, dark-gray nav items by default. Active items are signaled
+     purely by text/icon color (--sidebar-primary, applied via a data-[active=true] override
+     in DashboardLayout, since the shadcn default would fill in --sidebar-accent as a
+     background) — no background highlight, per the reference layout. */
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #374151;
   --sidebar-primary: var(--modec-blue);
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: var(--modec-cyan);
-  --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: rgba(12, 48, 75, 0.15);
-  --sidebar-ring: var(--modec-cyan);
+  --sidebar-accent: #F1F3F7;
+  --sidebar-accent-foreground: var(--modec-navy);
+  --sidebar-border: #E5E7EB;
+  --sidebar-ring: var(--modec-blue);
 }
 
 @layer base {

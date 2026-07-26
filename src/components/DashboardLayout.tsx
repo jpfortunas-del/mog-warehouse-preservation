@@ -29,12 +29,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const { state, toggleSidebar } = useSidebar();
   const isCollapsed = state === "collapsed";
   const isMobile = useIsMobile();
-  const activeItem = navItems.find(item => isNavItemActive(location, item.path));
 
   return (
     <>
       <div className="hidden md:block">
-        <Sidebar collapsible="icon" className="border-r-0">
+        <Sidebar collapsible="icon" className="border-r border-sidebar-border">
           <SidebarHeader className="h-16 justify-center border-b border-sidebar-border">
             <div className="flex items-center gap-3 px-2 w-full">
               <button
@@ -45,9 +44,11 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 <PanelLeft className="h-4 w-4 text-sidebar-foreground/70" />
               </button>
               {!isCollapsed && (
-                <span className="font-bold tracking-tight text-sidebar-foreground truncate">
-                  Preservation App
-                </span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-bold tracking-tight text-foreground truncate">
+                    Preservation App
+                  </span>
+                </div>
               )}
             </div>
           </SidebarHeader>
@@ -58,7 +59,12 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 const isActive = isNavItemActive(location, item.path);
                 return (
                   <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.label} className="h-10 font-normal">
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.label}
+                      className="h-10 font-normal data-[active=true]:bg-primary/10 data-[active=true]:text-primary data-[active=true]:font-medium"
+                    >
                       <Link href={item.path}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.label}</span>
@@ -79,14 +85,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       </div>
 
       <SidebarInset>
-        {isMobile && (
-          <div className="flex border-b h-14 items-center px-4 bg-sidebar sticky top-0 z-40">
-            <span className="font-semibold text-sidebar-foreground truncate">
-              {activeItem?.label ?? "Preservation App"}
-            </span>
-          </div>
-        )}
-        <main className={`flex-1 p-4 md:p-6 ${isMobile ? "pb-20" : ""}`}>{children}</main>
+        <main className={`flex-1 p-6 md:p-8 ${isMobile ? "pb-20" : ""}`}>{children}</main>
         {isMobile && <BottomNav />}
       </SidebarInset>
     </>

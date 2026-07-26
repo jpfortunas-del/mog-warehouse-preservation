@@ -1,6 +1,8 @@
 import { useLocation, useRoute } from "wouter";
 import { PageHeader } from "@/components/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { trpc } from "@/lib/trpc";
 import Materials from "./Materials";
 import InventoryUnits from "./InventoryUnits";
 
@@ -8,12 +10,14 @@ export default function Parts() {
   const [, params] = useRoute("/parts/:tab?");
   const [, navigate] = useLocation();
   const tab = params?.tab === "inventory-units" ? "inventory-units" : "materials";
+  const { data: materials = [] } = trpc.materials.list.useQuery();
 
   return (
     <div>
       <PageHeader
         title="Parts"
         description="Materials catalog and individually tracked inventory units."
+        badge={<Badge variant="secondary">{materials.length} materials</Badge>}
       />
       <Tabs
         value={tab}

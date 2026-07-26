@@ -266,10 +266,9 @@ export async function getMaterialById(id: number): Promise<Material | null> {
   return result[0] ?? null;
 }
 
-// Serials are seeded off the material's DB id (globally unique) rather than its
-// user-entered business code, since inventoryUnits.serial has a unique constraint
-// and the business code has no such guarantee. New units inherit the material's
-// default storage bin and received date.
+// Serials are sequential per material, restarting at 00001 for each material (uniqueness is
+// enforced as the (materialId, serial) pair, not on serial alone — see schema.ts). New units
+// inherit the material's default storage bin and received date.
 function buildInventoryUnitRows(
   materialId: number,
   count: number,
@@ -279,7 +278,7 @@ function buildInventoryUnitRows(
 ): InsertInventoryUnit[] {
   return Array.from({ length: count }, (_, i) => ({
     materialId,
-    serial: `MAT-${materialId}-${String(startSeq + i).padStart(3, "0")}`,
+    serial: String(startSeq + i).padStart(5, "0"),
     status: "available",
     location,
     receivedDate,

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { useLocation } from "wouter";
+import { MapPin, Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +43,7 @@ const emptyForm: FormState = {
 };
 
 export default function Materials() {
+  const [, navigate] = useLocation();
   const utils = trpc.useUtils();
   const { data: materials = [], isLoading } = trpc.materials.list.useQuery();
   const { data: equipmentTypes = [] } = trpc.equipmentTypes.list.useQuery();
@@ -132,7 +134,10 @@ export default function Materials() {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex justify-end gap-2">
+        <Button variant="outline" onClick={() => navigate("/parts/import")}>
+          <Upload /> Import
+        </Button>
         <Button onClick={openCreate}>
           <Plus /> New Material
         </Button>
@@ -143,7 +148,7 @@ export default function Materials() {
             <TableHeader>
               <TableRow>
                 <TableHead>Code</TableHead>
-                <TableHead>Name</TableHead>
+                <TableHead>Description</TableHead>
                 <TableHead>Equipment Type</TableHead>
                 <TableHead>Qty.</TableHead>
                 <TableHead>Storage Bin</TableHead>
@@ -224,7 +229,7 @@ export default function Materials() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
+              <Label htmlFor="name">Description</Label>
               <Input
                 id="name"
                 value={form.name}
@@ -233,7 +238,7 @@ export default function Materials() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Notes</Label>
               <Textarea
                 id="description"
                 value={form.description}
