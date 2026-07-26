@@ -15,7 +15,7 @@ export type InsertEquipmentType = typeof equipmentTypes.$inferInsert;
 export const preservationProcedures = mysqlTable("preservation_procedures", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  checklist: json("checklist"),
+  checklist: json("checklist").$type<ChecklistStep[]>(),
   description: text("description"),
   equipmentTypeId: int("equipment_type_id")
     .notNull()
@@ -25,6 +25,14 @@ export const preservationProcedures = mysqlTable("preservation_procedures", {
 
 export type PreservationProcedure = typeof preservationProcedures.$inferSelect;
 export type InsertPreservationProcedure = typeof preservationProcedures.$inferInsert;
+
+// A single checklist step defined on a Preservation Procedure. expectedResult is the
+// pass/fail outcome the technician should expect when the step is executed correctly.
+export type ChecklistStep = {
+  stepNumber: number;
+  description: string;
+  expectedResult: "pass" | "fail";
+};
 
 export const maintenancePlans = mysqlTable(
   "maintenance_plans",
@@ -92,13 +100,23 @@ export const workOrders = mysqlTable("work_orders", {
     .notNull()
     .references(() => inventoryUnits.id),
   status: mysqlEnum("status", ["open", "in_progress", "completed"]).notNull().default("open"),
-  checklistResult: json("checklist_result"),
+  checklistResult: json("checklist_result").$type<WorkOrderChecklistResult>(),
+  dueDate: date("due_date", { mode: "string" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   closedAt: timestamp("closed_at"),
 });
 
 export type WorkOrder = typeof workOrders.$inferSelect;
 export type InsertWorkOrder = typeof workOrders.$inferInsert;
+
+// Result of executing a Work Order's checklist. `note` covers freeform/automatic closure
+// messages (e.g. "closed automatically - unit consumed"); `steps` mirrors the linked
+// Procedure's checklist with the technician's actual pass/fail per step.
+export type ChecklistResultStep = ChecklistStep & { actualResult: "pass" | "fail" };
+export type WorkOrderChecklistResult = {
+  note?: string;
+  steps?: ChecklistResultStep[];
+};
 
 export const unitPlanAssignments = mysqlTable(
   "unit_plan_assignments",

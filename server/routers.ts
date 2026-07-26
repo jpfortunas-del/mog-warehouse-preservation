@@ -42,9 +42,15 @@ const equipmentTypeInput = z.object({
   active: z.boolean(),
 });
 
+const checklistStepInput = z.object({
+  stepNumber: z.number().int().positive(),
+  description: z.string().min(1, "Step description is required"),
+  expectedResult: z.enum(["pass", "fail"]),
+});
+
 const preservationProcedureInput = z.object({
   name: z.string().min(1, "Name is required"),
-  checklist: z.array(z.string()).nullish(),
+  checklist: z.array(checklistStepInput).nullish(),
   description: z.string().optional().nullable(),
   equipmentTypeId: z.number().int().positive("Equipment type is required"),
   active: z.boolean(),
@@ -77,10 +83,20 @@ const inventoryUnitInput = z.object({
   location: z.string().optional().nullable(),
 });
 
+const checklistResultStepInput = checklistStepInput.extend({
+  actualResult: z.enum(["pass", "fail"]),
+});
+
+const checklistResultInput = z.object({
+  note: z.string().optional(),
+  steps: z.array(checklistResultStepInput).optional(),
+});
+
 const workOrderInput = z.object({
   planId: z.number().int().positive("Maintenance plan is required"),
   inventoryUnitId: z.number().int().positive("Inventory unit is required"),
   status: z.enum(["open", "in_progress", "completed"]),
+  checklistResult: checklistResultInput.nullish(),
 });
 
 const createAssignmentInput = z.object({

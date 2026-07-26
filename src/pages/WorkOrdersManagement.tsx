@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
 import type { inferRouterOutputs } from "@trpc/server";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
 import type { AppRouter } from "../../server/routers";
+import type { ChecklistResultStep, ChecklistStep } from "../../drizzle/schema";
 
 type WorkOrder = inferRouterOutputs<AppRouter>["workOrders"]["list"][number];
 type Status = WorkOrder["status"];
+
+function formatIsoDate(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function isOverdue(wo: WorkOrder) {
+  if (wo.status === "completed" || !wo.dueDate) return false;
+  const today = new Date().toISOString().slice(0, 10);
+  return wo.dueDate < today;
+}
 
 const STATUS_LABEL: Record<Status, string> = {
   open: "Open",
@@ -47,10 +59,15 @@ export default function WorkOrdersManagement() {
   const { data: inventoryUnits = [] } = trpc.inventoryUnits.list.useQuery();
   const { data: equipmentTypes = [] } = trpc.equipmentTypes.list.useQuery();
   const { data: materials = [] } = trpc.materials.list.useQuery();
+  const { data: procedures = [] } = trpc.preservationProcedures.list.useQuery();
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<WorkOrder | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [completing, setCompleting] = useState<WorkOrder | null>(null);
+  const [stepResults, setStepResults] = useState<ChecklistResultStep[]>([]);
 
   const invalidate = () => utils.workOrders.list.invalidate();
 
@@ -68,6 +85,13 @@ export default function WorkOrdersManagement() {
   });
   const deleteMutation = trpc.workOrders.delete.useMutation({
     onSuccess: () => invalidate(),
+  });
+  const completeMutation = trpc.workOrders.update.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setCompleteOpen(false);
+      setCompleting(null);
+    },
   });
 
   function openCreate() {
@@ -106,6 +130,34 @@ export default function WorkOrdersManagement() {
     }
   }
 
+  function checklistForWorkOrder(item: WorkOrder): ChecklistStep[] {
+    const plan = maintenancePlans.find(p => p.id === item.planId);
+    if (!plan) return [];
+    const procedure = procedures.find(p => p.id === plan.preservationProcedureId);
+    return Array.isArray(procedure?.checklist) ? (procedure.checklist as ChecklistStep[]) : [];
+  }
+
+  function openComplete(item: WorkOrder) {
+    const checklist = checklistForWorkOrder(item);
+    setCompleting(item);
+    setStepResults(checklist.map(step => ({ ...step, actualResult: step.expectedResult })));
+    setCompleteOpen(true);
+  }
+
+  function updateStepResult(index: number, actualResult: "pass" | "fail") {
+    setStepResults(results => results.map((r, i) => (i === index ? { ...r, actualResult } : r)));
+  }
+
+  function handleCompleteSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!completing) return;
+    completeMutation.mutate({
+      id: completing.id,
+      status: "completed",
+      checklistResult: stepResults.length > 0 ? { steps: stepResults } : null,
+    });
+  }
+
   function planLabel(id: number) {
     const plan = maintenancePlans.find(p => p.id === id);
     if (!plan) return `#${id}`;
@@ -137,6 +189,7 @@ export default function WorkOrdersManagement() {
               <TableRow>
                 <TableHead>Maintenance Plan</TableHead>
                 <TableHead>Inventory Unit</TableHead>
+                <TableHead>Due Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -144,14 +197,14 @@ export default function WorkOrdersManagement() {
             <TableBody>
               {isLoading && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     Loading...
                   </TableCell>
                 </TableRow>
               )}
               {!isLoading && activeWorkOrders.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     No open work orders. Completed work orders are available in History.
                   </TableCell>
                 </TableRow>
@@ -161,9 +214,24 @@ export default function WorkOrdersManagement() {
                   <TableCell className="font-medium">{planLabel(item.planId)}</TableCell>
                   <TableCell>{inventoryUnitLabel(item.inventoryUnitId)}</TableCell>
                   <TableCell>
+                    {item.dueDate ? (
+                      <div className="flex items-center gap-2">
+                        <span className={isOverdue(item) ? "font-medium text-destructive" : ""}>
+                          {formatIsoDate(item.dueDate)}
+                        </span>
+                        {isOverdue(item) && <Badge variant="destructive">Overdue</Badge>}
+                      </div>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
                     <Badge variant={STATUS_VARIANT[item.status]}>{STATUS_LABEL[item.status]}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" title="Complete" onClick={() => openComplete(item)}>
+                      <CheckCircle2 />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
                       <Pencil />
                     </Button>
@@ -247,6 +315,61 @@ export default function WorkOrdersManagement() {
                 disabled={isSaving || !form.planId || !form.inventoryUnitId}
               >
                 {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete Work Order</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCompleteSubmit} className="flex flex-col gap-4">
+            {completing && (
+              <p className="text-sm text-muted-foreground">
+                {planLabel(completing.planId)} — {inventoryUnitLabel(completing.inventoryUnitId)}
+              </p>
+            )}
+            {stepResults.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No checklist defined for this procedure. You can mark this work order as completed directly.
+              </p>
+            )}
+            <div className="flex flex-col gap-2">
+              {stepResults.map((step, index) => (
+                <div key={index} className="flex items-start gap-2 rounded-md border p-2">
+                  <span className="mt-2 w-6 shrink-0 text-center text-sm text-muted-foreground">
+                    {step.stepNumber}
+                  </span>
+                  <div className="flex flex-1 flex-col gap-2">
+                    <p className="text-sm">{step.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Expected: {step.expectedResult === "pass" ? "Pass" : "Fail"}
+                    </p>
+                    <Select
+                      value={step.actualResult}
+                      onValueChange={value => updateStepResult(index, value as "pass" | "fail")}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pass">Actual: Pass</SelectItem>
+                        <SelectItem value="fail">Actual: Fail</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCompleteOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={completeMutation.isPending}>
+                {completeMutation.isPending ? "Saving..." : "Mark as Completed"}
               </Button>
             </DialogFooter>
           </form>

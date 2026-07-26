@@ -25,6 +25,15 @@ import type {
   UnitPlanAssignment,
 } from "../drizzle/schema";
 
+// Returns the ISO date (YYYY-MM-DD) `days` days after `base`, for the work_orders.due_date
+// column (mode: "string"). Used to derive a Work Order's due date from its creation instant
+// plus the linked Maintenance Plan's interval.
+function addDaysIso(base: Date, days: number): string {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 let _db: ReturnType<typeof drizzle> | null = null;
 
 // Lazily create the drizzle instance so local tooling can run without a DB.
@@ -65,11 +74,17 @@ async function handleUnitBecameAvailable(tx: Tx, unitId: number, equipmentTypeId
     .where(and(eq(unitPlanAssignments.inventoryUnitId, unitId), eq(unitPlanAssignments.active, true)));
 
   if (activeAssignments.length > 0) {
+    const planIds = activeAssignments.map(a => a.planId);
+    const plans = await tx.select().from(maintenancePlans).where(inArray(maintenancePlans.id, planIds));
+    const intervalByPlanId = new Map(plans.map(p => [p.id, p.interval]));
+    const now = new Date();
     await tx.insert(workOrders).values(
       activeAssignments.map(assignment => ({
         planId: assignment.planId,
         inventoryUnitId: unitId,
         status: "open" as const,
+        createdAt: now,
+        dueDate: addDaysIso(now, intervalByPlanId.get(assignment.planId) ?? 0),
       }))
     );
     return;
@@ -91,8 +106,15 @@ async function handleUnitBecameAvailable(tx: Tx, unitId: number, equipmentTypeId
     }))
   );
 
+  const now = new Date();
   await tx.insert(workOrders).values(
-    activePlans.map(plan => ({ planId: plan.id, inventoryUnitId: unitId, status: "open" as const }))
+    activePlans.map(plan => ({
+      planId: plan.id,
+      inventoryUnitId: unitId,
+      status: "open" as const,
+      createdAt: now,
+      dueDate: addDaysIso(now, plan.interval),
+    }))
   );
 }
 
@@ -444,7 +466,13 @@ export async function getWorkOrderById(id: number): Promise<WorkOrder | null> {
 }
 
 export async function createWorkOrder(data: InsertWorkOrder): Promise<WorkOrder> {
-  const result = await getDb().insert(workOrders).values(data).$returningId();
+  const planRows = await getDb().select().from(maintenancePlans).where(eq(maintenancePlans.id, data.planId)).limit(1);
+  const plan = planRows[0];
+  const now = new Date();
+  const result = await getDb()
+    .insert(workOrders)
+    .values({ ...data, createdAt: now, dueDate: plan ? addDaysIso(now, plan.interval) : null })
+    .$returningId();
   const created = await getWorkOrderById(result[0].id);
   if (!created) throw new Error("Failed to create work order");
   return created;
@@ -502,7 +530,16 @@ export async function createManualAssignment(inventoryUnitId: number, planId: nu
 
     const unitRows = await tx.select().from(inventoryUnits).where(eq(inventoryUnits.id, inventoryUnitId)).limit(1);
     if (unitRows[0]?.status === "available") {
-      await tx.insert(workOrders).values({ planId, inventoryUnitId, status: "open" });
+      const planRows = await tx.select().from(maintenancePlans).where(eq(maintenancePlans.id, planId)).limit(1);
+      const plan = planRows[0];
+      const now = new Date();
+      await tx.insert(workOrders).values({
+        planId,
+        inventoryUnitId,
+        status: "open",
+        createdAt: now,
+        dueDate: plan ? addDaysIso(now, plan.interval) : null,
+      });
     }
 
     const createdRows = await tx.select().from(unitPlanAssignments).where(eq(unitPlanAssignments.id, id)).limit(1);

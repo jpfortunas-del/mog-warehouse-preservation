@@ -4,8 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
+import type { WorkOrderChecklistResult } from "../../drizzle/schema";
 
 const ALL = "all";
+
+function formatIsoDate(iso: string) {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
 
 export default function WorkOrdersHistory() {
   const { data: workOrders = [] } = trpc.workOrders.list.useQuery();
@@ -93,6 +99,7 @@ export default function WorkOrdersHistory() {
               <TableRow>
                 <TableHead>Maintenance Plan</TableHead>
                 <TableHead>Inventory Unit</TableHead>
+                <TableHead>Due Date</TableHead>
                 <TableHead>Closed At</TableHead>
                 <TableHead>Note</TableHead>
               </TableRow>
@@ -100,25 +107,32 @@ export default function WorkOrdersHistory() {
             <TableBody>
               {completed.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                     No completed work orders match this filter.
                   </TableCell>
                 </TableRow>
               )}
               {completed.map(item => {
-                const note =
-                  item.checklistResult && typeof item.checklistResult === "object" && "note" in item.checklistResult
-                    ? String((item.checklistResult as { note?: unknown }).note ?? "")
-                    : "";
+                const result = (item.checklistResult ?? null) as WorkOrderChecklistResult | null;
+                const steps = result?.steps ?? [];
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{planLabel(item.planId)}</TableCell>
                     <TableCell>{inventoryUnitLabel(item.inventoryUnitId)}</TableCell>
+                    <TableCell>{item.dueDate ? formatIsoDate(item.dueDate) : "—"}</TableCell>
                     <TableCell>
                       {item.closedAt ? new Date(item.closedAt).toLocaleString() : "—"}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {note || <Badge variant="secondary">Manual completion</Badge>}
+                      {result?.note ? (
+                        result.note
+                      ) : steps.length > 0 ? (
+                        <span>
+                          {steps.filter(s => s.actualResult === "pass").length}/{steps.length} steps passed
+                        </span>
+                      ) : (
+                        <Badge variant="secondary">Manual completion</Badge>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

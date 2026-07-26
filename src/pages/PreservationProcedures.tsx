@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,16 +18,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { trpc } from "@/lib/trpc";
+import type { ChecklistStep } from "../../drizzle/schema";
+
+type StepFormState = {
+  description: string;
+  expectedResult: "pass" | "fail";
+};
 
 type FormState = {
   name: string;
   equipmentTypeId: string;
   description: string;
-  checklist: string;
+  steps: StepFormState[];
   active: boolean;
 };
 
-const emptyForm: FormState = { name: "", equipmentTypeId: "", description: "", checklist: "", active: true };
+const emptyForm: FormState = { name: "", equipmentTypeId: "", description: "", steps: [], active: true };
 
 export default function PreservationProcedures() {
   const utils = trpc.useUtils();
@@ -65,22 +71,52 @@ export default function PreservationProcedures() {
 
   function openEdit(item: ProcedureRow) {
     setEditing(item);
+    const checklist = Array.isArray(item.checklist) ? (item.checklist as ChecklistStep[]) : [];
     setForm({
       name: item.name,
       equipmentTypeId: String(item.equipmentTypeId),
       description: item.description ?? "",
-      checklist: Array.isArray(item.checklist) ? (item.checklist as string[]).join("\n") : "",
+      steps: checklist
+        .slice()
+        .sort((a, b) => a.stepNumber - b.stepNumber)
+        .map(step => ({ description: step.description, expectedResult: step.expectedResult })),
       active: item.active,
     });
     setOpen(true);
   }
 
+  function addStep() {
+    setForm(f => ({ ...f, steps: [...f.steps, { description: "", expectedResult: "pass" }] }));
+  }
+
+  function removeStep(index: number) {
+    setForm(f => ({ ...f, steps: f.steps.filter((_, i) => i !== index) }));
+  }
+
+  function moveStep(index: number, direction: -1 | 1) {
+    setForm(f => {
+      const target = index + direction;
+      if (target < 0 || target >= f.steps.length) return f;
+      const steps = f.steps.slice();
+      [steps[index], steps[target]] = [steps[target], steps[index]];
+      return { ...f, steps };
+    });
+  }
+
+  function updateStep(index: number, patch: Partial<StepFormState>) {
+    setForm(f => ({
+      ...f,
+      steps: f.steps.map((step, i) => (i === index ? { ...step, ...patch } : step)),
+    }));
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const checklist = form.checklist
-      .split("\n")
-      .map(line => line.trim())
-      .filter(Boolean);
+    const checklist: ChecklistStep[] = form.steps.map((step, i) => ({
+      stepNumber: i + 1,
+      description: step.description,
+      expectedResult: step.expectedResult,
+    }));
     const payload = {
       name: form.name,
       equipmentTypeId: Number(form.equipmentTypeId),
@@ -214,13 +250,67 @@ export default function PreservationProcedures() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="checklist">Checklist (one item per line)</Label>
-              <Textarea
-                id="checklist"
-                value={form.checklist}
-                onChange={e => setForm({ ...form, checklist: e.target.value })}
-                placeholder={"Check sealing\nApply VCI film"}
-              />
+              <div className="flex items-center justify-between">
+                <Label>Checklist Steps</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addStep}>
+                  <Plus /> Add Step
+                </Button>
+              </div>
+              {form.steps.length === 0 && (
+                <p className="text-sm text-muted-foreground">No steps added yet.</p>
+              )}
+              <div className="flex flex-col gap-2">
+                {form.steps.map((step, index) => (
+                  <div key={index} className="flex items-start gap-2 rounded-md border p-2">
+                    <span className="mt-2 w-6 shrink-0 text-center text-sm text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <div className="flex flex-1 flex-col gap-2">
+                      <Input
+                        placeholder="Step description"
+                        value={step.description}
+                        onChange={e => updateStep(index, { description: e.target.value })}
+                        required
+                      />
+                      <Select
+                        value={step.expectedResult}
+                        onValueChange={value => updateStep(index, { expectedResult: value as "pass" | "fail" })}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pass">Expected: Pass</SelectItem>
+                          <SelectItem value="fail">Expected: Fail</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex flex-col">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={index === 0}
+                        onClick={() => moveStep(index, -1)}
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        disabled={index === form.steps.length - 1}
+                        onClick={() => moveStep(index, 1)}
+                      >
+                        <ArrowDown />
+                      </Button>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeStep(index)}>
+                        <Trash2 />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
