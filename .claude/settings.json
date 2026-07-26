@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git add)",
+      "Bash(git add *)",
+      "Bash(git commit)",
+      "Bash(git commit *)",
+      "Bash(pnpm install)",
+      "Bash(pnpm install *)",
+      "Bash(pnpm dev)",
+      "Bash(pnpm dev *)",
+      "Bash(pnpm build)",
+      "Bash(pnpm build *)",
+      "Bash(drizzle-kit generate)",
+      "Bash(drizzle-kit generate *)",
+      "Bash(npx drizzle-kit generate)",
+      "Bash(npx drizzle-kit generate *)"
+    ],
+    "ask": [
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(rm *)",
+      "Bash(rmdir *)",
+      "Bash(git rm *)",
+      "Bash(git clean *)",
+      "Bash(drizzle-kit push)",
+      "Bash(drizzle-kit push *)",
+      "Bash(npx drizzle-kit push)",
+      "Bash(npx drizzle-kit push *)",
+      "Bash(drizzle-kit migrate)",
+      "Bash(drizzle-kit migrate *)",
+      "Bash(npx drizzle-kit migrate)",
+      "Bash(npx drizzle-kit migrate *)",
+      "Bash(mysql *)"
+    ]
+  }
+}
