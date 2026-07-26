@@ -1,0 +1,27 @@
+import { Link, useLocation } from "wouter";
+import { navItems } from "@/components/nav-items";
+
+export default function BottomNav() {
+  const [location] = useLocation();
+
+  return (
+    <nav className="fixed bottom-0 left-0 right-0 h-16 border-t bg-modec-navy flex items-center overflow-x-auto px-1 z-40">
+      {navItems.map(item => {
+        const isActive = location.startsWith(item.path);
+        return (
+          <Link
+            key={item.path}
+            href={item.path}
+            className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg shrink-0 transition-colors ${
+              isActive ? "text-white bg-modec-cyan/30" : "text-white/60 hover:text-white"
+            }`}
+            aria-label={item.label}
+          >
+            <item.icon className="h-5 w-5" />
+            <span className="text-[10px] font-medium whitespace-nowrap">{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
