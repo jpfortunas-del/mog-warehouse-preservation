@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
   equipmentTypes,
@@ -34,6 +34,41 @@ export function getDb() {
     _db = drizzle(process.env.DATABASE_URL);
   }
   return _db;
+}
+
+type Tx = Parameters<Parameters<ReturnType<typeof getDb>["transaction"]>[0]>[0];
+
+// Preservation activation/closure (PRD section 5): entering stock opens a Work Order
+// per active plan for the unit's equipment type; leaving stock closes any open ones.
+
+async function activateEnteringInventoryUnits(tx: Tx, equipmentTypeId: number, unitIds: number[]) {
+  if (unitIds.length === 0) return;
+
+  const activePlans = await tx
+    .select()
+    .from(maintenancePlans)
+    .where(and(eq(maintenancePlans.equipmentTypeId, equipmentTypeId), eq(maintenancePlans.active, true)));
+
+  if (activePlans.length === 0) return;
+
+  await tx.insert(workOrders).values(
+    unitIds.flatMap(inventoryUnitId =>
+      activePlans.map(plan => ({ planId: plan.id, inventoryUnitId, status: "open" as const }))
+    )
+  );
+}
+
+async function closeOpenWorkOrdersForUnit(tx: Tx, inventoryUnitId: number) {
+  await tx
+    .update(workOrders)
+    .set({
+      status: "completed",
+      closedAt: new Date(),
+      checklistResult: { note: "Encerrada automaticamente por saída de estoque da unidade de inventário." },
+    })
+    .where(
+      and(eq(workOrders.inventoryUnitId, inventoryUnitId), inArray(workOrders.status, ["open", "in_progress"]))
+    );
 }
 
 // Equipment Types
@@ -167,7 +202,15 @@ export async function createMaterial(data: InsertMaterial): Promise<Material> {
 
     const quantity = data.quantity ?? 0;
     if (quantity > 0) {
-      await tx.insert(inventoryUnits).values(buildInventoryUnitRows(materialId, quantity, 1));
+      const insertedUnits = await tx
+        .insert(inventoryUnits)
+        .values(buildInventoryUnitRows(materialId, quantity, 1))
+        .$returningId();
+      await activateEnteringInventoryUnits(
+        tx,
+        data.equipmentTypeId,
+        insertedUnits.map(u => u.id)
+      );
     }
 
     const createdRows = await tx.select().from(materials).where(eq(materials.id, materialId)).limit(1);
@@ -195,16 +238,25 @@ export async function updateMaterial(id: number, data: Partial<InsertMaterial>):
 
     await tx.update(materials).set(data).where(eq(materials.id, id));
 
-    if (data.quantity !== undefined) {
-      const toCreate = data.quantity - existingCount;
-      if (toCreate > 0) {
-        await tx.insert(inventoryUnits).values(buildInventoryUnitRows(id, toCreate, existingCount + 1));
-      }
-    }
-
     const updatedRows = await tx.select().from(materials).where(eq(materials.id, id)).limit(1);
     const updated = updatedRows[0];
     if (!updated) throw new Error("Material not found");
+
+    if (data.quantity !== undefined) {
+      const toCreate = data.quantity - existingCount;
+      if (toCreate > 0) {
+        const insertedUnits = await tx
+          .insert(inventoryUnits)
+          .values(buildInventoryUnitRows(id, toCreate, existingCount + 1))
+          .$returningId();
+        await activateEnteringInventoryUnits(
+          tx,
+          updated.equipmentTypeId,
+          insertedUnits.map(u => u.id)
+        );
+      }
+    }
+
     return updated;
   });
 }
@@ -225,20 +277,54 @@ export async function getInventoryUnitById(id: number): Promise<InventoryUnit | 
 }
 
 export async function createInventoryUnit(data: InsertInventoryUnit): Promise<InventoryUnit> {
-  const result = await getDb().insert(inventoryUnits).values(data).$returningId();
-  const created = await getInventoryUnitById(result[0].id);
-  if (!created) throw new Error("Failed to create inventory unit");
-  return created;
+  return getDb().transaction(async tx => {
+    const result = await tx.insert(inventoryUnits).values(data).$returningId();
+    const unitId = result[0].id;
+
+    if (data.status === "available") {
+      const materialRows = await tx.select().from(materials).where(eq(materials.id, data.materialId)).limit(1);
+      const material = materialRows[0];
+      if (material) {
+        await activateEnteringInventoryUnits(tx, material.equipmentTypeId, [unitId]);
+      }
+    }
+
+    const createdRows = await tx.select().from(inventoryUnits).where(eq(inventoryUnits.id, unitId)).limit(1);
+    const created = createdRows[0];
+    if (!created) throw new Error("Failed to create inventory unit");
+    return created;
+  });
 }
 
 export async function updateInventoryUnit(
   id: number,
   data: Partial<InsertInventoryUnit>
 ): Promise<InventoryUnit> {
-  await getDb().update(inventoryUnits).set(data).where(eq(inventoryUnits.id, id));
-  const updated = await getInventoryUnitById(id);
-  if (!updated) throw new Error("Inventory unit not found");
-  return updated;
+  return getDb().transaction(async tx => {
+    const previousRows = await tx.select().from(inventoryUnits).where(eq(inventoryUnits.id, id)).limit(1);
+    const previous = previousRows[0];
+    if (!previous) throw new Error("Inventory unit not found");
+
+    await tx.update(inventoryUnits).set(data).where(eq(inventoryUnits.id, id));
+
+    if (data.status !== undefined && data.status !== previous.status) {
+      if (data.status === "available") {
+        const materialId = data.materialId ?? previous.materialId;
+        const materialRows = await tx.select().from(materials).where(eq(materials.id, materialId)).limit(1);
+        const material = materialRows[0];
+        if (material) {
+          await activateEnteringInventoryUnits(tx, material.equipmentTypeId, [id]);
+        }
+      } else if (data.status === "reserved" || data.status === "consumed") {
+        await closeOpenWorkOrdersForUnit(tx, id);
+      }
+    }
+
+    const updatedRows = await tx.select().from(inventoryUnits).where(eq(inventoryUnits.id, id)).limit(1);
+    const updated = updatedRows[0];
+    if (!updated) throw new Error("Inventory unit not found");
+    return updated;
+  });
 }
 
 export async function deleteInventoryUnit(id: number): Promise<void> {
