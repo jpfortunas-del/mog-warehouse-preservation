@@ -1,16 +1,113 @@
+import { useState } from "react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
-import { StatusBadge } from "@/components/StatusBadge";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { equipmentTypes } from "@/data/mockData";
+import { Textarea } from "@/components/ui/textarea";
+import { trpc } from "@/lib/trpc";
+import type { EquipmentType } from "../../drizzle/schema";
+
+type FormState = {
+  name: string;
+  code: string;
+  preservable: boolean;
+  description: string;
+  active: boolean;
+};
+
+const emptyForm: FormState = { name: "", code: "", preservable: false, description: "", active: true };
 
 export default function EquipmentTypes() {
+  const utils = trpc.useUtils();
+  const { data: equipmentTypes = [], isLoading } = trpc.equipmentTypes.list.useQuery();
+
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<EquipmentType | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm);
+
+  const invalidate = () => utils.equipmentTypes.list.invalidate();
+
+  const createMutation = trpc.equipmentTypes.create.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setOpen(false);
+    },
+  });
+  const updateMutation = trpc.equipmentTypes.update.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setOpen(false);
+    },
+  });
+  const deleteMutation = trpc.equipmentTypes.delete.useMutation({
+    onSuccess: () => invalidate(),
+  });
+
+  function openCreate() {
+    setEditing(null);
+    setForm(emptyForm);
+    setOpen(true);
+  }
+
+  function openEdit(item: EquipmentType) {
+    setEditing(item);
+    setForm({
+      name: item.name,
+      code: item.code,
+      preservable: item.preservable,
+      description: item.description ?? "",
+      active: item.active,
+    });
+    setOpen(true);
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const payload = {
+      name: form.name,
+      code: form.code,
+      preservable: form.preservable,
+      description: form.description || null,
+      active: form.active,
+    };
+    if (editing) {
+      updateMutation.mutate({ id: editing.id, ...payload });
+    } else {
+      createMutation.mutate(payload);
+    }
+  }
+
+  function handleDelete(item: EquipmentType) {
+    if (confirm(`Excluir o tipo de equipamento "${item.name}"?`)) {
+      deleteMutation.mutate({ id: item.id });
+    }
+  }
+
+  const isSaving = createMutation.isPending || updateMutation.isPending;
+
   return (
     <div>
       <PageHeader
         title="Equipment Types"
         description="Categorias de equipamentos monitorados no processo de preservação de warehouse."
       />
+      <div className="mb-4 flex justify-end">
+        <Button onClick={openCreate}>
+          <Plus /> Novo Tipo de Equipamento
+        </Button>
+      </div>
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -18,18 +115,49 @@ export default function EquipmentTypes() {
               <TableRow>
                 <TableHead>Código</TableHead>
                 <TableHead>Nome</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Criticidade</TableHead>
+                <TableHead>Descrição</TableHead>
+                <TableHead>Preservável</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    Carregando...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && equipmentTypes.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    Nenhum tipo de equipamento cadastrado.
+                  </TableCell>
+                </TableRow>
+              )}
               {equipmentTypes.map(item => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.code}</TableCell>
                   <TableCell>{item.name}</TableCell>
-                  <TableCell>{item.category}</TableCell>
+                  <TableCell className="text-muted-foreground">{item.description || "—"}</TableCell>
                   <TableCell>
-                    <StatusBadge status={item.criticality} />
+                    <Badge variant={item.preservable ? "cyan" : "secondary"}>
+                      {item.preservable ? "Sim" : "Não"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={item.active ? "cyan" : "destructive"}>
+                      {item.active ? "Ativo" : "Inativo"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => openEdit(item)}>
+                      <Pencil />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(item)}>
+                      <Trash2 />
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -37,6 +165,66 @@ export default function EquipmentTypes() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editing ? "Editar Tipo de Equipamento" : "Novo Tipo de Equipamento"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div className="grid gap-2">
+              <Label htmlFor="code">Código</Label>
+              <Input
+                id="code"
+                value={form.code}
+                onChange={e => setForm({ ...form, code: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="name">Nome</Label>
+              <Input
+                id="name"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="description">Descrição</Label>
+              <Textarea
+                id="description"
+                value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="preservable"
+                checked={form.preservable}
+                onCheckedChange={checked => setForm({ ...form, preservable: checked === true })}
+              />
+              <Label htmlFor="preservable">Preservável</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="active"
+                checked={form.active}
+                onCheckedChange={checked => setForm({ ...form, active: checked === true })}
+              />
+              <Label htmlFor="active">Ativo</Label>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isSaving}>
+                {isSaving ? "Salvando..." : "Salvar"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
