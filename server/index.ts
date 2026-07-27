@@ -1,24 +1,11 @@
 import "dotenv/config";
-import express from "express";
 import { createServer } from "http";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "./routers";
-import { createContext } from "./trpc";
+import { createApp } from "./app";
 import { serveStatic, setupVite } from "./vite";
 
 async function startServer() {
-  const app = express();
+  const app = createApp();
   const server = createServer(app);
-
-  app.use(express.json());
-
-  app.use(
-    "/api/trpc",
-    createExpressMiddleware({
-      router: appRouter,
-      createContext,
-    })
-  );
 
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
