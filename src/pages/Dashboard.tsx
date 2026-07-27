@@ -1,13 +1,49 @@
 import { Link } from "wouter";
+import { AlertTriangle, Boxes, ClipboardList, Layers } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 
 function formatIsoDate(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
+}
+
+// KPI tile: tinted background (~6-8% of the accent color) + a small solid icon tile above the
+// number, per the "Field Ops" design direction (design_handoff_mog_warehouse).
+function KpiTile({
+  icon: Icon,
+  tint,
+  iconBg,
+  value,
+  valueClassName,
+  label,
+  labelClassName,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  tint: string;
+  iconBg: string;
+  value: React.ReactNode;
+  valueClassName?: string;
+  label: string;
+  labelClassName?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg p-4.5" style={{ background: tint }}>
+      <div
+        className="mb-3.5 flex h-8.5 w-8.5 items-center justify-center rounded-[9px]"
+        style={{ background: iconBg }}
+      >
+        <Icon className="h-4.5 w-4.5 text-white" />
+      </div>
+      <div className={`text-[30px] leading-none font-bold ${valueClassName ?? "text-modec-navy"}`}>{value}</div>
+      <div className={`mt-1.5 text-xs font-medium ${labelClassName ?? "text-muted-foreground"}`}>{label}</div>
+      {children}
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -51,10 +87,9 @@ export default function Dashboard() {
   const equipmentTypeRows = equipmentTypes.map(et => {
     const materialCount = materials.filter(m => m.equipmentTypeId === et.id).length;
     const unitCount = inventoryUnits.filter(u => materialsById.get(u.materialId)?.equipmentTypeId === et.id).length;
-    const openWorkOrderCount = openWorkOrders.filter(
-      w => planEquipmentTypeById.get(w.planId) === et.id
-    ).length;
-    return { equipmentType: et, materialCount, unitCount, openWorkOrderCount };
+    const openCount = openWorkOrders.filter(w => planEquipmentTypeById.get(w.planId) === et.id).length;
+    const overdueCount = overdueWorkOrders.filter(w => planEquipmentTypeById.get(w.planId) === et.id).length;
+    return { equipmentType: et, materialCount, unitCount, openCount, overdueCount };
   });
 
   return (
@@ -66,78 +101,70 @@ export default function Dashboard() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <CardDescription>Active Materials</CardDescription>
-            <CardTitle className="text-3xl">{activeMaterials}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Inventory Units</CardDescription>
-            <CardTitle className="text-3xl">{inventoryUnits.length}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex gap-2 pt-0 text-xs text-muted-foreground">
-            <span>{unitsByStatus.available} available</span>
-            <span>·</span>
-            <span>{unitsByStatus.reserved} reserved</span>
-            <span>·</span>
-            <span>{unitsByStatus.consumed} consumed</span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Open Work Orders</CardDescription>
-            <CardTitle className="text-3xl">{openWorkOrders.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Overdue Work Orders</CardDescription>
-            <CardTitle className="text-3xl text-destructive">{overdueWorkOrders.length}</CardTitle>
-          </CardHeader>
-        </Card>
+        <KpiTile
+          icon={Boxes}
+          tint="rgba(13,54,146,0.06)"
+          iconBg="#0D3692"
+          value={activeMaterials}
+          label="Active Materials"
+        />
+        <KpiTile
+          icon={Layers}
+          tint="rgba(31,150,207,0.08)"
+          iconBg="#1F96CF"
+          value={inventoryUnits.length}
+          label="Inventory Units"
+        >
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            <Badge variant="cyan">{unitsByStatus.available} available</Badge>
+            <Badge>{unitsByStatus.reserved} reserved</Badge>
+            <Badge variant="secondary">{unitsByStatus.consumed} consumed</Badge>
+          </div>
+        </KpiTile>
+        <KpiTile
+          icon={ClipboardList}
+          tint="#F4F5F7"
+          iconBg="#5B6472"
+          value={openWorkOrders.length}
+          label="Open Work Orders"
+        />
+        <KpiTile
+          icon={AlertTriangle}
+          tint="rgba(252,25,33,0.07)"
+          iconBg="#FC1921"
+          value={overdueWorkOrders.length}
+          valueClassName="text-destructive"
+          label="Overdue Work Orders"
+          labelClassName="text-destructive/80"
+        />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Overdue Work Orders</CardTitle>
-          <CardDescription>Open work orders past their due date, most overdue first.</CardDescription>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Maintenance Plan</TableHead>
-                <TableHead>Inventory Unit</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {overdueWorkOrders.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    No overdue work orders.
-                  </TableCell>
-                </TableRow>
-              )}
-              {overdueWorkOrders.map(item => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{planLabel(item.planId)}</TableCell>
-                  <TableCell>{inventoryUnitLabel(item.inventoryUnitId)}</TableCell>
-                  <TableCell>
-                    <Badge variant="destructive">{item.dueDate ? formatIsoDate(item.dueDate) : "—"}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Link href="/work-orders" className="text-sm text-primary underline-offset-4 hover:underline">
-                      View
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <CardContent className="flex flex-col gap-0 p-1.5">
+          {overdueWorkOrders.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">No overdue work orders.</p>
+          )}
+          {overdueWorkOrders.map(item => (
+            <Link
+              key={item.id}
+              href="/work-orders"
+              className="flex items-center justify-between gap-3 rounded-md px-3 py-3 transition-colors last:border-0 hover:bg-primary/5 [&:not(:last-child)]:border-b [&:not(:last-child)]:border-[#F4F5F7]"
+            >
+              <div className="flex min-w-0 items-center gap-3.5">
+                <span className="shrink-0 text-sm font-bold text-modec-navy">{planLabel(item.planId)}</span>
+                <span className="truncate text-sm text-muted-foreground">{inventoryUnitLabel(item.inventoryUnitId)}</span>
+              </div>
+              <div className="flex shrink-0 items-center gap-4">
+                <span className="text-xs font-semibold text-destructive">
+                  Due {item.dueDate ? formatIsoDate(item.dueDate) : "—"}
+                </span>
+                <Badge variant="destructive">Overdue</Badge>
+              </div>
+            </Link>
+          ))}
         </CardContent>
       </Card>
 
@@ -145,34 +172,24 @@ export default function Dashboard() {
         <CardHeader>
           <CardTitle>By Equipment Type</CardTitle>
         </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Equipment Type</TableHead>
-                <TableHead>Materials</TableHead>
-                <TableHead>Inventory Units</TableHead>
-                <TableHead>Open Work Orders</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {equipmentTypeRows.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                    No equipment types registered.
-                  </TableCell>
-                </TableRow>
-              )}
-              {equipmentTypeRows.map(row => (
-                <TableRow key={row.equipmentType.id}>
-                  <TableCell className="font-medium">{row.equipmentType.name}</TableCell>
-                  <TableCell>{row.materialCount}</TableCell>
-                  <TableCell>{row.unitCount}</TableCell>
-                  <TableCell>{row.openWorkOrderCount}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <CardContent>
+          {equipmentTypeRows.length === 0 && (
+            <p className="py-8 text-center text-sm text-muted-foreground">No equipment types registered.</p>
+          )}
+          <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+            {equipmentTypeRows.map(row => (
+              <div key={row.equipmentType.id} className="rounded-lg bg-[#F4F5F7] p-4">
+                <div className="text-sm font-bold text-modec-navy">{row.equipmentType.name}</div>
+                <div className="mt-2.5 text-[11px] text-muted-foreground">
+                  {row.materialCount} mat · {row.unitCount} un
+                </div>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  <Badge variant="secondary">{row.openCount} open</Badge>
+                  {row.overdueCount > 0 && <Badge variant="destructive">{row.overdueCount} overdue</Badge>}
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

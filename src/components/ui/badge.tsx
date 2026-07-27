@@ -5,12 +5,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 gap-1 [&>svg]:size-3 [&>svg]:pointer-events-none transition-colors",
+  "inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold w-fit whitespace-nowrap shrink-0 gap-1 [&>svg]:size-3 [&>svg]:pointer-events-none transition-colors",
   {
     variants: {
       variant: {
         default: "border-transparent bg-primary text-primary-foreground",
-        secondary: "border-transparent bg-secondary text-secondary-foreground",
+        // Solid neutral gray, white text — pending/neutral status pill (MODEC gray family, #8B93A3).
+        secondary: "border-transparent bg-[#8B93A3] text-white",
         destructive: "border-transparent bg-destructive text-white",
         outline: "text-foreground border-border",
         cyan: "border-transparent bg-modec-cyan text-white",
